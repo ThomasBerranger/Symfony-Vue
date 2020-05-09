@@ -3,7 +3,7 @@
 {% block title %}Home{% endblock %}
 
 {% block body %}
-    <section id="home" class="col-12">
+    <section id="home" class="col-12 offset-lg-2 col-lg-8">
         <div>
             <b-card-group columns>
 
@@ -15,7 +15,7 @@
                         img-top
                 >
                     <b-card-text>
-                        <b-button block variant="primary">Je l'ai vu !</b-button>
+                        <b-button v-on:click="movieWatchedClicked(tmdb_id)" block variant="primary">Je l'ai vu !</b-button>
                     </b-card-text>
                 </b-card>
 
@@ -74,6 +74,7 @@
             el: '#home',
             delimiters: ['${', '}'],
             data: {
+                tmdb_id: null,
                 title: "Loading...",
                 description: "Loading...",
                 poster_path: null,
@@ -83,6 +84,7 @@
                     .get('https://api.themoviedb.org/3/movie/550?api_key=881f215dc9661f8bdf8acde7e5b043c5')
                     .then(
                         response => {
+                            this.tmdb_id = response.data.id
                             this.title = response.data.title
                             this.description = response.data.overview
                             this.poster_path = `https://image.tmdb.org/t/p/w500/${response.data.poster_path}`
@@ -91,6 +93,21 @@
                         }
                     )
             },
+            methods: {
+                movieWatchedClicked: function(movieTMDBId) {
+                    axios
+                        .post('{{ path('user_watch', {'id': 'idToReplace'}) }}'.replace('idToReplace', movieTMDBId),{
+                            tmdb_id: this.tmdb_id
+                        })
+                        .then(
+                            response => {
+                                console.log(response)
+                            }, error => {
+                                console.log(error)
+                            }
+                        )
+                }
+            }
         })
     </script>
 {% endblock %}

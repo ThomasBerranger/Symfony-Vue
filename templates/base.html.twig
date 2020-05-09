@@ -29,12 +29,14 @@
     <section id="base" class="mb-5">
         <b-navbar toggleable="lg" type="dark" variant="primary" fixed="top">
             <b-navbar-brand href="{{ path('home') }}">BroLight</b-navbar-brand>
-            <b-navbar-toggle v-b-toggle.sidebar-1 target=""></b-navbar-toggle>
+            <b-navbar-toggle v-b-toggle.sidebar target=""></b-navbar-toggle>
         </b-navbar>
 
-        <b-sidebar id="sidebar-1" title="Sidebar" shadow right>
+        <b-sidebar id="sidebar" title="Sidebar" shadow right>
             <div class="px-3 py-2">
                 <p>${message}</p>
+                <a href="{{ path('user_show') }}">Mon compte</a>
+                <hr>
                 <p>
                     Cras mattis consectetur purus sit amet fermentum. Cras justo odio, dapibus ac facilisis
                     in, egestas eget quam. Morbi leo risus, porta ac consectetur ac, vestibulum at eros.

@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\MovieRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass=MovieRepository::class)
@@ -14,21 +15,25 @@ class Movie
      * @ORM\Id()
      * @ORM\GeneratedValue()
      * @ORM\Column(type="integer")
+     * @Groups("movie:read")
      */
     private $id;
 
     /**
      * @ORM\Column(type="integer")
+     * @Groups("movie:read")
      */
     private $tmdbId;
 
     /**
      * @ORM\Column(type="datetime")
+     * @Groups("movie:read")
      */
     private $createdAt;
 
     /**
      * @ORM\Column(type="datetime")
+     * @Groups("movie:read")
      */
     private $updatedAt;
 
@@ -76,12 +81,12 @@ class Movie
 
     public function getUpdatedAt(): ?\DateTimeInterface
     {
-        return $this->UpdatedAt;
+        return $this->updatedAt;
     }
 
     public function setUpdatedAt(\DateTimeInterface $updatedAt): self
     {
-        $this->UpdatedAt = $updatedAt;
+        $this->updatedAt = $updatedAt;
 
         return $this;
     }
