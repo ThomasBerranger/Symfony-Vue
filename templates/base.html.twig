@@ -1,33 +1,35 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-        <title>BroLight - {% block title %} {% endblock %}</title>
+    <title>BroLight - {% block title %} {% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/clap.png') }}" />
 
-        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
 
-        <!-- Load required Bootstrap and BootstrapVue CSS -->
-        <link type="text/css" rel="stylesheet" href="{{ asset('bootstrap/scss/bootstrap.css') }}" />
-        <link type="text/css" rel="stylesheet" href="{{ asset('bootstrap-vue/dist/bootstrap-vue.min.css') }}" />
-        <!-- Load BootstrapVue JS -->
-        <script src="{{ asset('bootstrap-vue/dist/bootstrap-vue.min.js') }}"></script>
+    <!-- Load required Bootstrap and BootstrapVue CSS -->
+    <link type="text/css" rel="stylesheet" href="{{ asset('bootstrap/scss/bootstrap.css') }}" />
+    <link type="text/css" rel="stylesheet" href="{{ asset('bootstrap-vue/dist/bootstrap-vue.min.css') }}" />
+    <!-- Load BootstrapVue JS -->
+    <script src="{{ asset('bootstrap-vue/dist/bootstrap-vue.min.js') }}"></script>
 
-        {% block stylesheets %}{% endblock %}
-    </head>
-    <body>
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
 
-    <noscript>
-        <strong>We're sorry but this project doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
-    </noscript>
+<noscript>
+    <strong>We're sorry but this project doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+</noscript>
+
+<container class="container-fluid">
 
     <section id="base">
-
         <b-navbar toggleable="lg" type="dark" variant="primary">
-            <b-navbar-brand href="#">BroLight</b-navbar-brand>
-            <b-navbar-toggle v-b-toggle.sidebar-1></b-navbar-toggle>
+            <b-navbar-brand href="{{ path('home') }}">BroLight</b-navbar-brand>
+            <b-navbar-toggle v-b-toggle.sidebar-1 target=""></b-navbar-toggle>
         </b-navbar>
 
         <b-sidebar id="sidebar-1" title="Sidebar" shadow right>
@@ -40,22 +42,21 @@
                 <b-img src="https://picsum.photos/500/500/?image=54" fluid thumbnail></b-img>
             </div>
         </b-sidebar>
-
-        {% block body %}{% endblock %}
     </section>
 
-        <script>
-            new Vue({
-                el: '#base',
-                delimiters: ['${', '}'],
-                data: {
-                    message: "Welcome!",
-                },
-                mounted() {
-                },
-            })
-        </script>
+    {% block body %}{% endblock %}
+</container>
 
-        {% block javascripts %}{% endblock %}
-    </body>
+<script>
+    new Vue({
+        el: '#base',
+        delimiters: ['${', '}'],
+        data: {
+            message: "Welcome!",
+        },
+    })
+</script>
+
+{% block javascripts %}{% endblock %}
+</body>
 </html>

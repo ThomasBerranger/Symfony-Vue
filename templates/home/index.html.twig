@@ -4,7 +4,40 @@
 
 {% block body %}
     <section id="home">
-        <h1 class="text-center mt-4">Home index</h1>
+        <h1 class="text-center my-3">Home index</h1>
+
+        <div>
+            <b-card-group deck>
+                <b-card v-bind:title="title" v-bind:img-src="poster_path" img-alt="Image" img-top>
+                    <b-card-text>
+                        ${description}
+                    </b-card-text>
+                    <template v-slot:footer>
+                        <b-button href="#" variant="info" block>Je l'ai vu !</b-button>
+                    </template>
+                </b-card>
+
+                <b-card title="Title" img-src="https://picsum.photos/300/300/?image=41" img-alt="Image" img-top>
+                    <b-card-text>
+                        This card has supporting text below as a natural lead-in to additional content.
+                    </b-card-text>
+                    <template v-slot:footer>
+                        <small class="text-muted">Last updated 3 mins ago</small>
+                    </template>
+                </b-card>
+
+                <b-card title="Title" img-src="https://picsum.photos/300/300/?image=41" img-alt="Image" img-top>
+                    <b-card-text>
+                        This is a wider card with supporting text below as a natural lead-in to additional content.
+                        This card has even longer content than the first to show that equal height action.
+                    </b-card-text>
+                    <template v-slot:footer>
+                        <small class="text-muted">Last updated 3 mins ago</small>
+                    </template>
+                </b-card>
+            </b-card-group>
+        </div>
+
     </section>
 {% endblock %}
 
@@ -13,6 +46,24 @@
         new Vue({
             el: '#home',
             delimiters: ['${', '}'],
+            data: {
+                title: "Loading...",
+                description: "Loading...",
+                poster_path: null,
+            },
+            mounted() {
+                axios
+                    .get('https://api.themoviedb.org/3/movie/550?api_key=881f215dc9661f8bdf8acde7e5b043c5')
+                    .then(
+                        response => {
+                            this.title = response.data.title
+                            this.description = response.data.overview
+                            this.poster_path = `https://image.tmdb.org/t/p/w500/${response.data.poster_path}`
+                        }, error => {
+                            console.log(error)
+                        }
+                    )
+            },
         })
     </script>
 {% endblock %}
