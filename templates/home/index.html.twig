@@ -15,7 +15,8 @@
                         img-top
                 >
                     <b-card-text>
-                        <b-button v-on:click="movieWatchedClicked(tmdb_id)" block variant="primary">Je l'ai vu !</b-button>
+                        <b-button v-if="user_watched_movies_ids.includes(tmdb_id)" block variant="success">Je l'ai vu !</b-button>
+                        <b-button v-else v-on:click="movieWatchedClicked(tmdb_id)" block variant="primary">Pas encore vu..</b-button>
                     </b-card-text>
                 </b-card>
 
@@ -74,6 +75,11 @@
             el: '#home',
             delimiters: ['${', '}'],
             data: {
+                user_watched_movies_ids: [
+                    {% for movie in app.user.movies %}
+                    {{ movie.tmdbId }},
+                    {% endfor %}
+                ],
                 tmdb_id: null,
                 title: "Loading...",
                 description: "Loading...",
@@ -101,7 +107,7 @@
                         })
                         .then(
                             response => {
-                                console.log(response)
+                                this.user_watched_movies_ids.push(this.tmdb_id)
                             }, error => {
                                 console.log(error)
                             }
