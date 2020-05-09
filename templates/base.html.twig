@@ -18,7 +18,43 @@
         {% block stylesheets %}{% endblock %}
     </head>
     <body>
+
+    <noscript>
+        <strong>We're sorry but this project doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+
+    <section id="base">
+
+        <b-navbar toggleable="lg" type="dark" variant="primary">
+            <b-navbar-brand href="#">BroLight</b-navbar-brand>
+            <b-navbar-toggle v-b-toggle.sidebar-1></b-navbar-toggle>
+        </b-navbar>
+
+        <b-sidebar id="sidebar-1" title="Sidebar" shadow right>
+            <div class="px-3 py-2">
+                <p>
+                    Cras mattis consectetur purus sit amet fermentum. Cras justo odio, dapibus ac facilisis
+                    in, egestas eget quam. Morbi leo risus, porta ac consectetur ac, vestibulum at eros.
+                </p>
+                <b-img src="https://picsum.photos/500/500/?image=54" fluid thumbnail></b-img>
+            </div>
+        </b-sidebar>
+
         {% block body %}{% endblock %}
+    </section>
+
+        <script>
+            new Vue({
+                el: '#base',
+                delimiters: ['${', '}'],
+                data: {
+                    message: "Welcome!",
+                },
+                mounted() {
+                },
+            })
+        </script>
+
         {% block javascripts %}{% endblock %}
     </body>
 </html>
