@@ -3,6 +3,7 @@
 {% block title %}My profile{% endblock %}
 
 {% block body %}
+
     <div id="userEdit" class="col-12">
         <h1 class="text-center">Edition de compte</h1>
         <hr>
@@ -60,6 +61,7 @@
             delimiters: ['${', '}'],
             data: {
                 form: {
+                    id: ({{ app.user.id }}),
                     email: '{{ app.user.email }}',
                     username: '{{ app.user.username }}',
                     password: '',
@@ -73,7 +75,17 @@
             methods: {
                 onSubmit: function(evt) {
                     evt.preventDefault()
-                    alert(JSON.stringify(this.form))
+                    console.log(this.form)
+                    axios
+                        .put('{{ path('user_edit') }}', this.form)
+                        .then(
+                            response => {
+                                console.log(response)
+                            }, error => {
+                                console.log(error)
+                            }
+                        )
+
                 },
                 onReset: function(evt) {
                     evt.preventDefault()
