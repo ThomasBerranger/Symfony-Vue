@@ -3,16 +3,87 @@
 {% block title %}My profile{% endblock %}
 
 {% block body %}
-    <div>
-        <h1>Hello {{ app.user.email }}!</h1>
-        <p>
+    <div id="userEdit" class="col-12">
+        <h1 class="text-center">Edition de compte</h1>
+        <hr>
+        <h2>Bonjour ${ form.username } !</h2>
 
-        </p>
+        <b-form @submit="onSubmit" @reset="onReset">
+            <b-form-group
+                    id="input-group-1"
+                    label="Ton adresse email:"
+                    label-for="input-1"
+                    description="Cet email ne sera pas communiqué."
+            >
+                <b-form-input
+                        id="input-1"
+                        v-model="form.email"
+                        type="email"
+                        required
+                        placeholder="Enter email"
+                ></b-form-input>
+            </b-form-group>
+
+            <b-form-group id="input-group-2" label="Ton pseudo:" label-for="input-2">
+                <b-form-input
+                        id="input-2"
+                        v-model="form.username"
+                        required
+                        placeholder="Enter username"
+                        :state="validation"
+                ></b-form-input>
+                <b-form-invalid-feedback :state="validation">
+                    Votre pseudo doit contenir entre 2 et 20 caractères.
+                </b-form-invalid-feedback>
+            </b-form-group>
+
+            <b-form-group id="input-group-3" label="Ton nouveau mot de passe:" label-for="input-2" description="Vous n'êtes pas obligé de le changer.">
+                <b-form-input
+                        id="input-3"
+                        v-model="form.password"
+                        type="password"
+                        aria-describedby="password-help-block"
+                ></b-form-input>
+            </b-form-group>
+
+            <b-button type="submit" variant="primary">Submit</b-button>
+            <b-button type="reset" variant="info">Reset</b-button>
+        </b-form>
+
     </div>
 {% endblock %}
 
 {% block javascripts %}
     <script>
-
+        new Vue({
+            el: '#userEdit',
+            delimiters: ['${', '}'],
+            data: {
+                form: {
+                    email: '{{ app.user.email }}',
+                    username: '{{ app.user.username }}',
+                    password: '',
+                },
+            },
+            computed: {
+                validation() {
+                    return this.form.username.length > 2 && this.form.username.length < 20
+                }
+            },
+            methods: {
+                onSubmit: function(evt) {
+                    evt.preventDefault()
+                    alert(JSON.stringify(this.form))
+                },
+                onReset: function(evt) {
+                    evt.preventDefault()
+                    this.form = {
+                        email: '{{ app.user.email }}',
+                        username: '{{ app.user.username }}',
+                        password: '',
+                    }
+                },
+            }
+        })
     </script>
 {% endblock %}
