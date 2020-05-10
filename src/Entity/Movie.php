@@ -21,7 +21,7 @@ class Movie
 
     /**
      * @ORM\Column(type="integer")
-     * @Groups("movie:read")
+     * @Groups({"movie:read", "user:read"})
      */
     private $tmdbId;
 

@@ -38,15 +38,6 @@
                 </b-form-invalid-feedback>
             </b-form-group>
 
-            <b-form-group id="input-group-3" label="Ton nouveau mot de passe:" label-for="input-2" description="Vous n'êtes pas obligé de le changer.">
-                <b-form-input
-                        id="input-3"
-                        v-model="form.password"
-                        type="password"
-                        aria-describedby="password-help-block"
-                ></b-form-input>
-            </b-form-group>
-
             <b-button type="submit" variant="primary">Submit</b-button>
             <b-button type="reset" variant="info">Reset</b-button>
         </b-form>
@@ -58,6 +49,10 @@
             <li>{{ movie.tmdbId }}: vu le {{ movie.createdAt|date('d/m/Y')}}</li>
         {% endfor %}
         </ul>
+
+        {% if is_granted('ROLE_ADMIN') %}
+            <p>Admin in the place</p>
+        {% endif %}
 
     </div>
 {% endblock %}
@@ -72,7 +67,6 @@
                     id: ({{ app.user.id }}),
                     email: '{{ app.user.email }}',
                     username: '{{ app.user.username }}',
-                    password: '',
                 },
             },
             computed: {
