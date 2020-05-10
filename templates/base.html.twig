@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <title>BroLight - {% block title %} {% endblock %}</title>
+    <title>{{ project_title }} - {% block title %} {% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ asset('images/clap.png') }}" />
 
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -15,6 +15,7 @@
     <link type="text/css" rel="stylesheet" href="{{ asset('bootstrap-vue/dist/bootstrap-vue.min.css') }}" />
     <!-- Load BootstrapVue JS -->
     <script src="{{ asset('bootstrap-vue/dist/bootstrap-vue.min.js') }}"></script>
+    <script src="{{ asset('bootstrap-vue/dist/bootstrap-vue-icons.min.js') }}"></script>
 
     {% block stylesheets %}{% endblock %}
 </head>

@@ -7,34 +7,27 @@
         <div>
             <b-card-group columns>
 
-                <b-card
-                        :title="title"
-                        align="center"
-                        :img-src="poster_path"
-                        :img-alt="'Poster of the movie '+title"
-                        img-top
-                >
-                    <b-card-text>
-                        <b-button v-if="user_watched_movies_ids.includes(tmdb_id)" block variant="success">Je l'ai vu !</b-button>
-                        <b-button v-else v-on:click="movieWatchedClicked(tmdb_id)" block variant="primary">Pas encore vu..</b-button>
-                    </b-card-text>
+                <b-card>
+                    <b-card-text>The Movie Data Base</b-card-text>
                 </b-card>
 
-                <b-card header="Quote">
-                    <blockquote class="blockquote mb-0">
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
-                        <footer class="blockquote-footer">
-                            Someone famous in <cite title="Source Title">Source Title</cite>
-                        </footer>
-                    </blockquote>
-                </b-card>
-
-                <b-card title="Title" img-src="https://placekitten.com/500/350" img-alt="Image" img-top>
-                    <b-card-text>
-                        This card has supporting text below as a natural lead-in to additional content.
-                    </b-card-text>
-                    <b-card-text class="small text-muted">Last updated 3 mins ago</b-card-text>
-                </b-card>
+                {% for movie in trendingMovies %}
+                    <b-card
+                            align="center"
+                            img-src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}"
+                            img-alt="Poster of {{ movie.title }}"
+                            img-top
+                    >
+                        <b-card-text>
+                            <b-button v-if="user_watched_movies_ids.includes({{ movie.id }})" block variant="success">
+                                <b-icon-eye-fill></b-icon-eye-fill>
+                            </b-button>
+                            <b-button v-else v-on:click='watched({{ movie.id }})' block variant="danger">
+                                <b-icon-eye-slash></b-icon-eye-slash>
+                            </b-button>
+                        </b-card-text>
+                    </b-card>
+                {% endfor %}
 
                 <b-card bg-variant="primary" text-variant="white">
                     <blockquote class="card-blockquote">
@@ -45,25 +38,6 @@
                     </blockquote>
                 </b-card>
 
-                <b-card>
-                    <b-card-title>Title</b-card-title>
-                    <b-card-text>
-                        This card has supporting text below as a natural lead-in to additional content.
-                    </b-card-text>
-                    <b-card-text class="small text-muted">Last updated 3 mins ago</b-card-text>
-                </b-card>
-
-                <b-card img-src="https://picsum.photos/400/400/?image=41" img-alt="Image" overlay></b-card>
-
-                <b-card img-src="https://picsum.photos/400/200/?image=41" img-alt="Image" img-top>
-                    <b-card-text>
-                        This is a wider card with supporting text below as a natural lead-in to additional content.
-                        This card has even longer content than the first.
-                    </b-card-text>
-                    <template v-slot:footer>
-                        <small class="text-muted">Footer Text</small>
-                    </template>
-                </b-card>
             </b-card-group>
         </div>
     </section>
@@ -80,34 +54,17 @@
                     {{ movie.tmdbId }},
                     {% endfor %}
                 ],
-                tmdb_id: null,
-                title: "Loading...",
-                description: "Loading...",
-                poster_path: null,
             },
-            mounted() {
-                axios
-                    .get('https://api.themoviedb.org/3/movie/550?api_key=881f215dc9661f8bdf8acde7e5b043c5')
-                    .then(
-                        response => {
-                            this.tmdb_id = response.data.id
-                            this.title = response.data.title
-                            this.description = response.data.overview
-                            this.poster_path = `https://image.tmdb.org/t/p/w500/${response.data.poster_path}`
-                        }, error => {
-                            console.log(error)
-                        }
-                    )
-            },
+            mounted() {},
             methods: {
-                movieWatchedClicked: function(movieTMDBId) {
+                watched: function(movieTMDBId) {
                     axios
                         .post('{{ path('user_watch', {'id': 'idToReplace'}) }}'.replace('idToReplace', movieTMDBId),{
-                            tmdb_id: this.tmdb_id
+                            tmdb_id: movieTMDBId
                         })
                         .then(
                             response => {
-                                this.user_watched_movies_ids.push(this.tmdb_id)
+                                this.user_watched_movies_ids.push(movieTMDBId)
                             }, error => {
                                 console.log(error)
                             }
