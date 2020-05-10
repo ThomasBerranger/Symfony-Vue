@@ -51,6 +51,14 @@
             <b-button type="reset" variant="info">Reset</b-button>
         </b-form>
 
+        <hr>
+        <p>Films</p>
+        <ul>
+        {% for movie in app.user.movies %}
+            <li>{{ movie.tmdbId }}: vu le {{ movie.createdAt|date('d/m/Y')}}</li>
+        {% endfor %}
+        </ul>
+
     </div>
 {% endblock %}
 
