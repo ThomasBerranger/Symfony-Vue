@@ -56,7 +56,7 @@ class UserController extends AbstractController
 
 
     /**
-     * @Route("/watch/{id}", name="user_watch", methods={"POST"})
+     * @Route("/watch", name="user_watch", methods={"POST"})
      */
     public function watch(Request $request, SerializerInterface $serializer)
     {

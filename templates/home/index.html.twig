@@ -55,11 +55,10 @@
                     {% endfor %}
                 ],
             },
-            mounted() {},
             methods: {
                 watched: function(movieTMDBId) {
                     axios
-                        .post('{{ path('user_watch', {'id': 'idToReplace'}) }}'.replace('idToReplace', movieTMDBId),{
+                        .post('{{ path('user_watch') }}',{
                             tmdb_id: movieTMDBId
                         })
                         .then(
