@@ -17,5 +17,5 @@
 
 ###> custom ###
 .idea
-.env
+#.env
 ###< custom ###
