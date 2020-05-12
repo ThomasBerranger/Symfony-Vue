@@ -20,7 +20,7 @@
             >
                 <b-card-text>
 
-                    <movie-card-button :movie='movie' :user_watched_movies_ids='user_watched_movies_ids'></movie-card-button>
+                    <movie-card-button :movie='movie' :user_watched_ids='userWatchedIds'></movie-card-button>
 
                 </b-card-text>
             </b-card>
@@ -43,7 +43,7 @@
 {% block javascripts %}
     <script>
         Vue.component('movie-card-button', {
-            props: ['movie', 'user_watched_movies_ids'],
+            props: ['movie', 'user_watched_ids'],
             delimiters: ['${', '}'],
             data: function () {
                 return {
@@ -57,7 +57,7 @@
                         .post('{{ path('user_watch') }}',{tmdb_id: movieTMDBId})
                         .then(
                             response => {
-                                this.user_watched_movies_ids.push(movieTMDBId)
+                                this.user_watched_ids.push(movieTMDBId)
                                 this.loading = false
                                 // console.log(response)
                             }, error => {
@@ -71,7 +71,7 @@
                 '<b-button block v-if="loading" variant="primary" disabled>\n' +
                 '    <b-spinner small></b-spinner>\n' +
                 '  </b-button>' +
-                ' <b-button block variant="primary" v-else-if="user_watched_movies_ids.includes(movie.id)">' +
+                ' <b-button block variant="primary" v-else-if="user_watched_ids.includes(movie.id)">' +
                 '   <b-icon-eye-slash></b-icon-eye-slash>' +
                 '</b-button>' +
                 ' <b-button block variant="primary" v-else v-on:click="watched(movie.id)">' +
@@ -83,7 +83,7 @@
             el: '#home',
             delimiters: ['${', '}'],
             data: {
-                user_watched_movies_ids: [
+                userWatchedIds: [
                     {% for movie in app.user.movies %}
                     {{ movie.tmdbId }},
                     {% endfor %}
