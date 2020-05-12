@@ -4,47 +4,81 @@
 
 {% block body %}
     <section id="home" class="col-12 offset-lg-2 col-lg-8">
-        <div>
-            <b-card-group columns>
 
-                <b-card>
-                    <b-card-text>The Movie Data Base</b-card-text>
-                </b-card>
+        <b-card-group columns>
 
-                {% for movie in trendingMovies %}
-                    <b-card
-                            align="center"
-                            img-src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}"
-                            img-alt="Poster of {{ movie.title }}"
-                            img-top
-                    >
-                        <b-card-text>
-                            <b-button v-if="user_watched_movies_ids.includes({{ movie.id }})" block variant="success">
-                                <b-icon-eye-fill></b-icon-eye-fill>
-                            </b-button>
-                            <b-button v-else v-on:click='watched({{ movie.id }})' block variant="danger">
-                                <b-icon-eye-slash></b-icon-eye-slash>
-                            </b-button>
-                        </b-card-text>
-                    </b-card>
-                {% endfor %}
+            <b-card>
+                <b-card-text>The Movie Data Base</b-card-text>
+            </b-card>
 
-                <b-card bg-variant="primary" text-variant="white">
-                    <blockquote class="card-blockquote">
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
-                        <footer>
-                            <small>Someone famous in <cite title="Source Title">Source Title</cite></small>
-                        </footer>
-                    </blockquote>
-                </b-card>
 
-            </b-card-group>
-        </div>
+            <b-card v-for="movie in movies" :key="movie.id"
+                    align="center"
+                    :img-src="'https://image.tmdb.org/t/p/w500' + movie.poster_path"
+                    :img-alt="'Poster of ' + movie.title"
+                    img-top
+            >
+                <b-card-text>
+
+                    <movie-card-button :movie='movie' :user_watched_movies_ids='user_watched_movies_ids'></movie-card-button>
+
+                </b-card-text>
+            </b-card>
+
+
+            <b-card bg-variant="primary" text-variant="white">
+                <blockquote class="card-blockquote">
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
+                    <footer>
+                        <small>Someone famous in <cite title="Source Title">Source Title</cite></small>
+                    </footer>
+                </blockquote>
+            </b-card>
+
+        </b-card-group>
+
     </section>
 {% endblock %}
 
 {% block javascripts %}
     <script>
+        Vue.component('movie-card-button', {
+            props: ['movie', 'user_watched_movies_ids'],
+            delimiters: ['${', '}'],
+            data: function () {
+                return {
+                    loading: false,
+                }
+            },
+            methods: {
+                watched: function(movieTMDBId) {
+                    this.loading = true
+                    axios
+                        .post('{{ path('user_watch') }}',{tmdb_id: movieTMDBId})
+                        .then(
+                            response => {
+                                this.user_watched_movies_ids.push(movieTMDBId)
+                                this.loading = false
+                                // console.log(response)
+                            }, error => {
+                                this.loading = false
+                                // console.log(error)
+                            }
+                        )
+                }
+            },
+            template:
+                '<b-button block v-if="loading" variant="primary" disabled>\n' +
+                '    <b-spinner small></b-spinner>\n' +
+                '  </b-button>' +
+                ' <b-button block variant="primary" v-else-if="user_watched_movies_ids.includes(movie.id)">' +
+                '   <b-icon-eye-slash></b-icon-eye-slash>' +
+                '</b-button>' +
+                ' <b-button block variant="primary" v-else v-on:click="watched(movie.id)">' +
+                '   <b-icon-eye-fill></b-icon-eye-fill>' +
+                '</b-button>'
+        })
+
         new Vue({
             el: '#home',
             delimiters: ['${', '}'],
@@ -54,22 +88,8 @@
                     {{ movie.tmdbId }},
                     {% endfor %}
                 ],
+                movies: {{ trendingMovies|json_encode|raw }},
             },
-            methods: {
-                watched: function(movieTMDBId) {
-                    axios
-                        .post('{{ path('user_watch') }}',{
-                            tmdb_id: movieTMDBId
-                        })
-                        .then(
-                            response => {
-                                this.user_watched_movies_ids.push(movieTMDBId)
-                            }, error => {
-                                console.log(error)
-                            }
-                        )
-                }
-            }
         })
     </script>
 {% endblock %}
