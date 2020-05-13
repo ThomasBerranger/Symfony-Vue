@@ -31,11 +31,12 @@
 
     <header id="header" class="d-none d-md-block d-lg-block">
         <p id="headerTitle" class="title-font display-2">BroLight</p>
+        <a href="#siteContent"><b-icon-eject flip-v></b-icon-eject></a>
     </header>
 
-    <nav id="mdNav" class="navbar justify-content-between" :class="{'fixed-top bg-dark':isFixed}">
+    <nav id="mdNav" class="navbar justify-content-between bg-white" :class="{'fixed-top':isFixed}">
         <a href="#" class="btn btn-light"><b-icon-search></b-icon-search></a>
-        <h1 id="navTitle" class="text-center title-font" :class="{'text-white':isFixed}" style="opacity: 0">BroLight</h1>
+        <h1 id="navTitle" class="text-center title-font" style="opacity: 0">BroLight</h1>
         <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-person></b-icon-person></a>
     </nav>
 
@@ -56,7 +57,7 @@
     </b-sidebar>
 </section>
 
-<section class="bg-dark">
+<section id="siteContent">
     <br><br><br>
     {% block body %}{% endblock %}
 </section>
