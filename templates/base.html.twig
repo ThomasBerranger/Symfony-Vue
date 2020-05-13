@@ -27,39 +27,39 @@
     <strong>We're sorry but this project doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
 </noscript>
 
-<container class="container-fluid">
+<section id="base">
 
-    <section id="base" class="mb-5">
+    <header id="header" class="d-none d-md-block d-lg-block">
+        <p id="headerTitle" class="title-font display-2">BroLight</p>
+    </header>
 
-        <header id="header" class="d-none d-md-block d-lg-block">
-            <p class="title-font display-2">BroLight</p>
-        </header>
+    <nav id="mdNav" class="navbar justify-content-between" :class="{'fixed-top bg-dark':isFixed}">
+        <a href="#" class="btn btn-light"><b-icon-search></b-icon-search></a>
+        <h1 id="navTitle" class="text-center title-font" :class="{'text-white':isFixed}" style="opacity: 0">BroLight</h1>
+        <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-person></b-icon-person></a>
+    </nav>
 
-        <nav id="mdNav" class="navbar navbar-light bg-light justify-content-between" :class="{'fixed-top':isFixed}">
-            <a href="#" class="btn btn-light"><b-icon-search></b-icon-search></a>
-            <h1 class="text-center title-font">Brolight</h1>
-            <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-person></b-icon-person></a>
-        </nav>
+    <b-navbar id="smNav" toggleable="md" type="dark" variant="dark" fixed="top">
+        <b-navbar-brand href="{{ path('home') }}">BroLight</b-navbar-brand>
+        <b-button v-b-toggle.sidebar variant="dark" right>
+            <b-icon-skip-backward aria-hidden="true"></b-icon-skip-backward>
+        </b-button>
+    </b-navbar>
 
-        <b-navbar id="smNav" toggleable="md" type="dark" variant="dark" fixed="top">
-            <b-navbar-brand href="{{ path('home') }}">BroLight</b-navbar-brand>
-            <b-button v-b-toggle.sidebar variant="dark" right>
-                <b-icon-skip-backward aria-hidden="true"></b-icon-skip-backward>
+    <b-sidebar id="sidebar" aria-labelledby="sidebar" no-header shadow backdrop right>
+        <template v-slot:default="{ hide }">
+            <b-button variant="light" block @click="hide">
+                <b-icon-skip-forward></b-icon-skip-forward>
             </b-button>
-        </b-navbar>
+            <b-button variant="light" block href="{{ path('user_show') }}">{{ app.user.username }}</b-button>
+        </template>
+    </b-sidebar>
+</section>
 
-        <b-sidebar id="sidebar" aria-labelledby="sidebar" no-header shadow backdrop right>
-            <template v-slot:default="{ hide }">
-                <b-button variant="light" block @click="hide">
-                    <b-icon-skip-forward></b-icon-skip-forward>
-                </b-button>
-                <b-button variant="light" block href="{{ path('user_show') }}">{{ app.user.username }}</b-button>
-            </template>
-        </b-sidebar>
-    </section>
-
+<section class="bg-dark">
+    <br><br><br>
     {% block body %}{% endblock %}
-</container>
+</section>
 
 <script>
     new Vue({
@@ -69,14 +69,19 @@
             isFixed: false
         },
         mounted() {
+            let header = document.getElementById('header');
+            let mdNav = document.getElementById('mdNav');
+            let headerTitle = document.getElementById('headerTitle');
+            let navTitle = document.getElementById('navTitle');
+
             window.document.onscroll = () => {
-                let header = document.getElementById('header');
-                let mdNav = document.getElementById('mdNav');
                 if (window.scrollY > mdNav.offsetTop && window.scrollY > header.offsetHeight){
                     this.isFixed = true;
                 } else {
                     this.isFixed = false;
                 }
+                headerTitle.style.opacity = (header.offsetHeight / window.scrollY) / 10
+                navTitle.style.opacity = 1 - (header.offsetHeight / window.scrollY) / 10
             }
         }
     })
