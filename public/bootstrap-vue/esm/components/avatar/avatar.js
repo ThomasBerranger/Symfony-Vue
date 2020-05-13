@@ -7,7 +7,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 import Vue from '../../utils/vue';
 import pluckProps from '../../utils/pluck-props';
 import { getComponentConfig } from '../../utils/config';
-import { isNumber, isString } from '../../utils/inspect';
+import { isNumber, isString, isUndefinedOrNull } from '../../utils/inspect';
 import { toFloat } from '../../utils/number';
 import { BButton } from '../button/button';
 import { BLink } from '../link/link';
@@ -146,10 +146,10 @@ var props = _objectSpread(_objectSpread({
 }); // --- Utility methods ---
 
 
-var computeSize = function computeSize(value) {
+export var computeSize = function computeSize(value) {
   // Default to `md` size when `null`, or parse to
   // number when value is a float-like string
-  value = value === null ? 'md' : isString(value) && RX_NUMBER.test(value) ? toFloat(value, 0) : value; // Convert all numbers to pixel values
+  value = isUndefinedOrNull(value) || value === '' ? 'md' : isString(value) && RX_NUMBER.test(value) ? toFloat(value, 0) : value; // Convert all numbers to pixel values
   // Handle default sizes when `sm`, `md` or `lg`
   // Or use value as is
 
@@ -157,10 +157,14 @@ var computeSize = function computeSize(value) {
 }; // --- Main component ---
 // @vue/component
 
-
 export var BAvatar = /*#__PURE__*/Vue.extend({
   name: NAME,
   mixins: [normalizeSlotMixin],
+  inject: {
+    bvAvatarGroup: {
+      default: null
+    }
+  },
   props: props,
   data: function data() {
     return {
@@ -169,11 +173,36 @@ export var BAvatar = /*#__PURE__*/Vue.extend({
   },
   computed: {
     computedSize: function computedSize() {
-      return computeSize(this.size);
+      // Always use the avatar group size
+      return computeSize(this.bvAvatarGroup ? this.bvAvatarGroup.size : this.size);
     },
-    fontSize: function fontSize() {
+    computedVariant: function computedVariant() {
+      // Prefer avatar-group variant if provided
+      var avatarGroup = this.bvAvatarGroup;
+      return avatarGroup && avatarGroup.variant ? avatarGroup.variant : this.variant;
+    },
+    computedRounded: function computedRounded() {
+      var avatarGroup = this.bvAvatarGroup;
+      var square = avatarGroup && avatarGroup.square ? true : this.square;
+      var rounded = avatarGroup && avatarGroup.rounded ? avatarGroup.rounded : this.rounded;
+      return square ? '0' : rounded === '' ? true : rounded || 'circle';
+    },
+    fontStyle: function fontStyle() {
+      var fontSize = this.computedSize;
+      fontSize = fontSize ? "calc(".concat(fontSize, " * ").concat(FONT_SIZE_SCALE, ")") : null;
+      return fontSize ? {
+        fontSize: fontSize
+      } : {};
+    },
+    marginStyle: function marginStyle() {
+      var avatarGroup = this.bvAvatarGroup;
+      var overlapScale = avatarGroup ? avatarGroup.overlapScale : 0;
       var size = this.computedSize;
-      return size ? "calc(".concat(size, " * ").concat(FONT_SIZE_SCALE, ")") : null;
+      var value = size && overlapScale ? "calc(".concat(size, " * -").concat(overlapScale, ")") : null;
+      return value ? {
+        marginLeft: value,
+        marginRight: value
+      } : {};
     },
     badgeStyle: function badgeStyle() {
       var size = this.computedSize,
@@ -209,13 +238,14 @@ export var BAvatar = /*#__PURE__*/Vue.extend({
   render: function render(h) {
     var _class2;
 
-    var variant = this.variant,
+    var variant = this.computedVariant,
         disabled = this.disabled,
-        square = this.square,
+        rounded = this.computedRounded,
         icon = this.icon,
         src = this.localSrc,
         text = this.text,
-        fontSize = this.fontSize,
+        fontStyle = this.fontStyle,
+        marginStyle = this.marginStyle,
         size = this.computedSize,
         isButton = this.button,
         type = this.buttonType,
@@ -224,7 +254,6 @@ export var BAvatar = /*#__PURE__*/Vue.extend({
         badgeStyle = this.badgeStyle;
     var isBLink = !isButton && (this.href || this.to);
     var tag = isButton ? BButton : isBLink ? BLink : 'span';
-    var rounded = square ? false : this.rounded === '' ? true : this.rounded || 'circle';
     var alt = this.alt || null;
     var ariaLabel = this.ariaLabel || null;
     var $content = null;
@@ -248,6 +277,9 @@ export var BAvatar = /*#__PURE__*/Vue.extend({
           error: this.onImgError
         }
       });
+      $content = h('span', {
+        staticClass: 'b-avatar-img'
+      }, [$content]);
     } else if (icon) {
       $content = h(BIcon, {
         props: {
@@ -261,9 +293,7 @@ export var BAvatar = /*#__PURE__*/Vue.extend({
     } else if (text) {
       $content = h('span', {
         staticClass: 'b-avatar-text',
-        style: {
-          fontSize: fontSize
-        }
+        style: fontStyle
       }, [h('span', text)]);
     } else {
       // Fallback default avatar content
@@ -289,11 +319,11 @@ export var BAvatar = /*#__PURE__*/Vue.extend({
 
     var componentData = {
       staticClass: CLASS_NAME,
-      class: (_class2 = {}, _defineProperty(_class2, "badge-".concat(variant), !isButton && variant), _defineProperty(_class2, "rounded", rounded === true), _defineProperty(_class2, 'rounded-0', square), _defineProperty(_class2, "rounded-".concat(rounded), rounded && rounded !== true), _defineProperty(_class2, "disabled", disabled), _class2),
-      style: {
+      class: (_class2 = {}, _defineProperty(_class2, "badge-".concat(variant), !isButton && variant), _defineProperty(_class2, "rounded", rounded === true), _defineProperty(_class2, "rounded-".concat(rounded), rounded && rounded !== true), _defineProperty(_class2, "disabled", disabled), _class2),
+      style: _objectSpread({
         width: size,
         height: size
-      },
+      }, marginStyle),
       attrs: {
         'aria-label': ariaLabel || null
       },

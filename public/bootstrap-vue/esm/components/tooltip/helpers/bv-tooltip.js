@@ -14,7 +14,7 @@ import looseEqual from '../../../utils/loose-equal';
 import { mathMax } from '../../../utils/math';
 import noop from '../../../utils/noop';
 import { arrayIncludes, concat, from as arrayFrom } from '../../../utils/array';
-import { closest, contains, getAttr, getById, hasAttr, hasClass, isDisabled, isElement, isVisible, removeAttr, select, setAttr } from '../../../utils/dom';
+import { attemptFocus, closest, contains, getAttr, getById, hasAttr, hasClass, isDisabled, isElement, isVisible, removeAttr, select, setAttr } from '../../../utils/dom';
 import { EVENT_OPTIONS_NO_CAPTURE, eventOn, eventOff, eventOnOff } from '../../../utils/events';
 import { isFunction, isNumber, isPlainObject, isString, isUndefined, isUndefinedOrNull } from '../../../utils/inspect';
 import { toInteger } from '../../../utils/number';
@@ -862,18 +862,15 @@ export var BVTooltip = /*#__PURE__*/Vue.extend({
       if (!this.$_enabled || this.dropdownOpen()) {
         /* istanbul ignore next */
         return;
-      }
+      } // Get around a WebKit bug where `click` does not trigger focus events
+      // On most browsers, `click` triggers a `focusin`/`focus` event first
+      // Needed so that trigger 'click blur' works on iOS
+      // https://github.com/bootstrap-vue/bootstrap-vue/issues/5099
+      // We use `currentTarget` rather than `target` to trigger on the
+      // element, not the inner content
 
-      try {
-        // Get around a WebKit bug where `click` does not trigger focus events
-        // On most browsers, `click` triggers a `focusin`/`focus` event first
-        // Needed so that trigger 'click blur' works on iOS
-        // https://github.com/bootstrap-vue/bootstrap-vue/issues/5099
-        // We use `currentTarget` rather than `target` to trigger on the
-        // element, not the inner content
-        evt.currentTarget.focus();
-      } catch (_unused2) {}
 
+      attemptFocus(evt.currentTarget);
       this.activeTrigger.click = !this.activeTrigger.click;
 
       if (this.isWithActiveTrigger) {

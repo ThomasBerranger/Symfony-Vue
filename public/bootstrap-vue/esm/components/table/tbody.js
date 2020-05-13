@@ -5,6 +5,8 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
+import attrsMixin from '../../mixins/attrs';
+import listenersMixin from '../../mixins/listeners';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 export var props = {
   tbodyTransitionProps: {
@@ -22,7 +24,8 @@ export var props = {
 
 export var BTbody = /*#__PURE__*/Vue.extend({
   name: 'BTbody',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -80,7 +83,7 @@ export var BTbody = /*#__PURE__*/Vue.extend({
     tbodyAttrs: function tbodyAttrs() {
       return _objectSpread({
         role: 'rowgroup'
-      }, this.$attrs);
+      }, this.bvAttrs);
     },
     tbodyProps: function tbodyProps() {
       return this.tbodyTransitionProps ? _objectSpread(_objectSpread({}, this.tbodyTransitionProps), {}, {
@@ -95,13 +98,12 @@ export var BTbody = /*#__PURE__*/Vue.extend({
     };
 
     if (this.isTransitionGroup) {
-      // We use native listeners if a transition group
-      // for any delegated events
+      // We use native listeners if a transition group for any delegated events
       data.on = this.tbodyTransitionHandlers || {};
-      data.nativeOn = this.$listeners || {};
+      data.nativeOn = this.bvListeners;
     } else {
       // Otherwise we place any listeners on the tbody element
-      data.on = this.$listeners || {};
+      data.on = this.bvListeners;
     }
 
     return h(this.isTransitionGroup ? 'transition-group' : 'tbody', data, this.normalizeSlot('default'));

@@ -29,7 +29,7 @@ import { concat } from '../../../utils/array';
 import { getComponentConfig } from '../../../utils/config';
 import { requestAF } from '../../../utils/dom';
 import { isUndefined, isString } from '../../../utils/inspect';
-import { assign, defineProperties, defineProperty, keys, omit, readonlyDescriptor } from '../../../utils/object';
+import { assign, defineProperties, defineProperty, hasOwnProperty, keys, omit, readonlyDescriptor } from '../../../utils/object';
 import { pluginFactory } from '../../../utils/plugins';
 import { warn, warnNotClient } from '../../../utils/warn';
 import { BToast, props as toastProps } from '../toast'; // --- Constants ---
@@ -206,9 +206,8 @@ var plugin = function plugin(Vue) {
     }
   }); // Define our read-only `$bvToast` instance property
   // Placed in an if just in case in HMR mode
-  // eslint-disable-next-line no-prototype-builtins
 
-  if (!Vue.prototype.hasOwnProperty(PROP_NAME)) {
+  if (!hasOwnProperty(Vue.prototype, PROP_NAME)) {
     defineProperty(Vue.prototype, PROP_NAME, {
       get: function get() {
         /* istanbul ignore next */

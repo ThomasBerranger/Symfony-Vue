@@ -1,0 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap");
+.title-font { font-family: "Lobster Two", cursive; }
+
+body { font-family: "Montserrat", sans-serif; font-weight: 600; }
+
+header { position: relative; min-height: 30vh; width: 100%; background-image: url("../images/bobine-cassette-cinema.png"); background-attachment: fixed; background-repeat: no-repeat; background-size: cover; }
+
+header * { position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
+
+#smNav { display: none; }
+
+#mdNav { display: flex; }
+
+@media screen and (max-width: 768px) { header { display: none; }
+  #smNav { display: flex; }
+  #mdNav { display: none; } }
+.navbar-brand { font-family: "Lobster Two", cursive; font-weight: 800; letter-spacing: 1px; font-size: x-large; }
+
+nav { box-shadow: 0 3px 20px #343a40; }
+
+/*# sourceMappingURL=styles.css.map */

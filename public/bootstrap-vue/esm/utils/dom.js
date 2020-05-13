@@ -52,6 +52,18 @@ export var removeNode = function removeNode(el) {
 
 export var isElement = function isElement(el) {
   return !!(el && el.nodeType === Node.ELEMENT_NODE);
+}; // Get the currently active HTML element
+
+export var getActiveElement = function getActiveElement() {
+  var excludes = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+  var activeElement = d.activeElement;
+  return activeElement && !excludes.some(function (el) {
+    return el === activeElement;
+  }) ? activeElement : null;
+}; // Determine if an HTML element is the currently active element
+
+export var isActiveElement = function isActiveElement(el) {
+  return isElement(el) && el === getActiveElement();
 }; // Determine if an HTML element is visible - Faster than CSS check
 
 export var isVisible = function isVisible(el) {
@@ -261,8 +273,26 @@ export var position = function position(el)
 // Assumes users have not used `tabindex` > `0` on elements
 
 export var getTabables = function getTabables() {
-  var el = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document;
-  return selectAll(TABABLE_SELECTOR, el).filter(isVisible).filter(function (i) {
-    return i.tabIndex > -1 && !i.disabled;
+  var rootEl = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document;
+  return selectAll(TABABLE_SELECTOR, rootEl).filter(isVisible).filter(function (el) {
+    return el.tabIndex > -1 && !el.disabled;
   });
+}; // Attempt to focus an element, and return `true` if successful
+
+export var attemptFocus = function attemptFocus(el) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+  try {
+    el.focus(options);
+  } catch (_unused) {}
+
+  return isActiveElement(el);
+}; // Attempt to blur an element, and return `true` if successful
+
+export var attemptBlur = function attemptBlur(el) {
+  try {
+    el.blur();
+  } catch (_unused2) {}
+
+  return !isActiveElement(el);
 };

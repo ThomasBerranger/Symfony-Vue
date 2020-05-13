@@ -9,6 +9,7 @@ import { arrayIncludes } from '../../utils/array';
 import { BVFormBtnLabelControl, dropdownProps } from '../../utils/bv-form-btn-label-control';
 import { getComponentConfig } from '../../utils/config';
 import { createDate, constrainDate, formatYMD, parseYMD } from '../../utils/date';
+import { attemptBlur, attemptFocus } from '../../utils/dom';
 import { isUndefinedOrNull } from '../../utils/inspect';
 import { pick } from '../../utils/object';
 import idMixin from '../../mixins/id';
@@ -416,16 +417,12 @@ export var BFormDatepicker = /*#__PURE__*/Vue.extend({
     // Public methods
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.focus();
-        } catch (_unused2) {}
+        attemptFocus(this.$refs.control);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.blur();
-        } catch (_unused3) {}
+        attemptBlur(this.$refs.control);
       }
     },
     // Private methods
@@ -484,9 +481,7 @@ export var BFormDatepicker = /*#__PURE__*/Vue.extend({
       var _this3 = this;
 
       this.$nextTick(function () {
-        try {
-          _this3.$refs.calendar.focus();
-        } catch (_unused4) {}
+        attemptFocus(_this3.$refs.calendar);
 
         _this3.$emit('shown');
       });

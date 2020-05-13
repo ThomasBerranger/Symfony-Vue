@@ -19,7 +19,7 @@ import { EVENT_OPTIONS_NO_CAPTURE, eventOn, eventOff } from '../../utils/events'
 import { isString, isUndefined } from '../../utils/inspect';
 import { mathMax } from '../../utils/math';
 import { toInteger } from '../../utils/number';
-import { toString as objectToString } from '../../utils/object';
+import { hasOwnProperty, toString as objectToString } from '../../utils/object';
 import { warn } from '../../utils/warn';
 /*
  * Constants / Defaults
@@ -81,7 +81,7 @@ var typeCheckConfig = function typeCheckConfig(componentName, config, configType
 /* istanbul ignore next: not easy to test */
 {
   for (var property in configTypes) {
-    if (Object.prototype.hasOwnProperty.call(configTypes, property)) {
+    if (hasOwnProperty(configTypes, property)) {
       var expectedTypes = configTypes[property];
       var value = config[property];
       var valueType = value && isElement(value) ? 'element' : toType(value); // handle Vue instances

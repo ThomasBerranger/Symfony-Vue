@@ -5,26 +5,28 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
-import { VBVisible } from '../../directives/visible/visible';
-import idMixin from '../../mixins/id';
-import formMixin from '../../mixins/form';
-import formSizeMixin from '../../mixins/form-size';
-import formStateMixin from '../../mixins/form-state';
-import formTextMixin from '../../mixins/form-text';
-import formSelectionMixin from '../../mixins/form-selection';
-import formValidityMixin from '../../mixins/form-validity';
-import listenOnRootMixin from '../../mixins/listen-on-root';
 import { getCS, isVisible, requestAF } from '../../utils/dom';
 import { isNull } from '../../utils/inspect';
 import { mathCeil, mathMax, mathMin } from '../../utils/math';
-import { toInteger, toFloat } from '../../utils/number'; // @vue/component
+import { toInteger, toFloat } from '../../utils/number';
+import formMixin from '../../mixins/form';
+import formSelectionMixin from '../../mixins/form-selection';
+import formSizeMixin from '../../mixins/form-size';
+import formStateMixin from '../../mixins/form-state';
+import formTextMixin from '../../mixins/form-text';
+import formValidityMixin from '../../mixins/form-validity';
+import idMixin from '../../mixins/id';
+import listenOnRootMixin from '../../mixins/listen-on-root';
+import listenersMixin from '../../mixins/listeners';
+import { VBVisible } from '../../directives/visible/visible'; // @vue/component
 
 export var BFormTextarea = /*#__PURE__*/Vue.extend({
   name: 'BFormTextarea',
   directives: {
     'b-visible': VBVisible
   },
-  mixins: [idMixin, listenOnRootMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
+  // Mixin order is important!
+  mixins: [listenersMixin, idMixin, listenOnRootMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
   props: {
     rows: {
       type: [Number, String],
@@ -87,6 +89,31 @@ export var BFormTextarea = /*#__PURE__*/Vue.extend({
       // This is used to set the attribute 'rows' on the textarea
       // If auto-height is enabled, then we return `null` as we use CSS to control height
       return this.computedMinRows === this.computedMaxRows ? this.computedMinRows : null;
+    },
+    computedAttrs: function computedAttrs() {
+      var disabled = this.disabled,
+          required = this.required;
+      return {
+        id: this.safeId(),
+        name: this.name || null,
+        form: this.form || null,
+        disabled: disabled,
+        placeholder: this.placeholder || null,
+        required: required,
+        autocomplete: this.autocomplete || null,
+        readonly: this.readonly || this.plaintext,
+        rows: this.computedRows,
+        wrap: this.wrap || null,
+        'aria-required': this.required ? 'true' : null,
+        'aria-invalid': this.computedAriaInvalid
+      };
+    },
+    computedListeners: function computedListeners() {
+      return _objectSpread(_objectSpread({}, this.bvListeners), {}, {
+        input: this.onInput,
+        change: this.onChange,
+        blur: this.onBlur
+      });
     }
   },
   watch: {
@@ -167,16 +194,11 @@ export var BFormTextarea = /*#__PURE__*/Vue.extend({
     }
   },
   render: function render(h) {
-    // Using self instead of this helps reduce code size during minification
-    var self = this;
     return h('textarea', {
       ref: 'input',
-      class: self.computedClass,
-      style: self.computedStyle,
+      class: this.computedClass,
+      style: this.computedStyle,
       directives: [{
-        name: 'model',
-        value: self.localValue
-      }, {
         name: 'b-visible',
         value: this.visibleCallback,
         // If textarea is within 640px of viewport, consider it visible
@@ -184,28 +206,11 @@ export var BFormTextarea = /*#__PURE__*/Vue.extend({
           '640': true
         }
       }],
-      attrs: {
-        id: self.safeId(),
-        name: self.name || null,
-        form: self.form || null,
-        disabled: self.disabled,
-        placeholder: self.placeholder || null,
-        required: self.required,
-        autocomplete: self.autocomplete || null,
-        readonly: self.readonly || self.plaintext,
-        rows: self.computedRows,
-        wrap: self.wrap || null,
-        'aria-required': self.required ? 'true' : null,
-        'aria-invalid': self.computedAriaInvalid
-      },
+      attrs: this.computedAttrs,
       domProps: {
-        value: self.localValue
+        value: this.localValue
       },
-      on: _objectSpread(_objectSpread({}, self.$listeners), {}, {
-        input: self.onInput,
-        change: self.onChange,
-        blur: self.onBlur
-      })
+      on: this.computedListeners
     });
   }
 });

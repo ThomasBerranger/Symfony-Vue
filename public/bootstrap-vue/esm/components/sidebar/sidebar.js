@@ -7,9 +7,11 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 import Vue from '../../utils/vue';
 import KeyCodes from '../../utils/key-codes';
 import BVTransition from '../../utils/bv-transition';
-import { contains, getTabables } from '../../utils/dom';
+import { attemptFocus, contains, getActiveElement, getTabables } from '../../utils/dom';
 import { getComponentConfig } from '../../utils/config';
+import { isBrowser } from '../../utils/env';
 import { toString } from '../../utils/string';
+import attrsMixin from '../../mixins/attrs';
 import idMixin from '../../mixins/id';
 import listenOnRootMixin from '../../mixins/listen-on-root';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
@@ -123,7 +125,8 @@ var renderBackdrop = function renderBackdrop(h, ctx) {
 
 export var BSidebar = /*#__PURE__*/Vue.extend({
   name: NAME,
-  mixins: [idMixin, listenOnRootMixin, normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, idMixin, listenOnRootMixin, normalizeSlotMixin],
   inheritAttrs: false,
   model: {
     prop: 'visible',
@@ -270,6 +273,23 @@ export var BSidebar = /*#__PURE__*/Vue.extend({
         right: this.right,
         hide: this.hide
       };
+    },
+    computedTile: function computedTile() {
+      return this.normalizeSlot('title', this.slotScope) || toString(this.title) || null;
+    },
+    titleId: function titleId() {
+      return this.computedTile ? this.safeId('__title__') : null;
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread(_objectSpread({}, this.bvAttrs), {}, {
+        id: this.safeId(),
+        tabindex: '-1',
+        role: 'dialog',
+        'aria-modal': this.backdrop ? 'true' : 'false',
+        'aria-hidden': this.localShow ? null : 'true',
+        'aria-label': this.ariaLabel || null,
+        'aria-labelledby': this.ariaLabelledby || this.titleId || null
+      });
     }
   },
   watch: {
@@ -369,10 +389,7 @@ export var BSidebar = /*#__PURE__*/Vue.extend({
     /* istanbul ignore next */
     {
       var tabables = getTabables(this.$refs.content);
-
-      try {
-        tabables.reverse()[0].focus();
-      } catch (_unused) {}
+      attemptFocus(tabables.reverse()[0]);
     },
 
     /* istanbul ignore next */
@@ -380,35 +397,24 @@ export var BSidebar = /*#__PURE__*/Vue.extend({
     /* istanbul ignore next */
     {
       var tabables = getTabables(this.$refs.content);
-
-      try {
-        tabables[0].focus();
-      } catch (_unused2) {}
+      attemptFocus(tabables[0]);
     },
     onBeforeEnter: function onBeforeEnter() {
-      this.$_returnFocusEl = null;
-
-      try {
-        this.$_returnFocusEl = document.activeElement || null;
-      } catch (_unused3) {} // Trigger lazy render
-
+      // Returning focus to `document.body` may cause unwanted scrolls,
+      // so we exclude setting focus on body
+      this.$_returnFocusEl = getActiveElement(isBrowser ? [document.body] : []); // Trigger lazy render
 
       this.isOpen = true;
     },
     onAfterEnter: function onAfterEnter(el) {
-      try {
-        if (!contains(el, document.activeElement)) {
-          el.focus();
-        }
-      } catch (_unused4) {}
+      if (!contains(el, getActiveElement())) {
+        attemptFocus(el);
+      }
 
       this.$emit('shown');
     },
     onAfterLeave: function onAfterLeave() {
-      try {
-        this.$_returnFocusEl.focus();
-      } catch (_unused5) {}
-
+      attemptFocus(this.$_returnFocusEl);
       this.$_returnFocusEl = null; // Trigger lazy render
 
       this.isOpen = false;
@@ -420,11 +426,6 @@ export var BSidebar = /*#__PURE__*/Vue.extend({
 
     var localShow = this.localShow;
     var shadow = this.shadow === '' ? true : this.shadow;
-    var title = this.normalizeSlot('title', this.slotScope) || toString(this.title) || null;
-    var titleId = title ? this.safeId('__title__') : null;
-    var ariaLabel = this.ariaLabel || null; // `ariaLabel` takes precedence over `ariaLabelledby`
-
-    var ariaLabelledby = this.ariaLabelledby || titleId || null;
     var $sidebar = h(this.tag, {
       ref: 'content',
       directives: [{
@@ -435,15 +436,7 @@ export var BSidebar = /*#__PURE__*/Vue.extend({
       class: [(_ref = {
         shadow: shadow === true
       }, _defineProperty(_ref, "shadow-".concat(shadow), shadow && shadow !== true), _defineProperty(_ref, "".concat(CLASS_NAME, "-right"), this.right), _defineProperty(_ref, "bg-".concat(this.bgVariant), !!this.bgVariant), _defineProperty(_ref, "text-".concat(this.textVariant), !!this.textVariant), _ref), this.sidebarClass],
-      attrs: _objectSpread(_objectSpread({}, this.$attrs), {}, {
-        id: this.safeId(),
-        tabindex: '-1',
-        role: 'dialog',
-        'aria-modal': this.backdrop ? 'true' : 'false',
-        'aria-hidden': localShow ? null : 'true',
-        'aria-label': ariaLabel,
-        'aria-labelledby': ariaLabelledby
-      }),
+      attrs: this.computedAttrs,
       style: {
         width: this.width
       }

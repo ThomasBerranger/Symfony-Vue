@@ -3,6 +3,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 import Vue from '../../utils/vue';
 import { arrayIncludes, concat } from '../../utils/array';
 import { getComponentConfig } from '../../utils/config';
+import { attemptBlur, attemptFocus } from '../../utils/dom';
 import { isNull } from '../../utils/inspect';
 import { isLocaleRTL } from '../../utils/locale';
 import { mathMax, mathMin } from '../../utils/math';
@@ -285,16 +286,12 @@ export var BFormRating = /*#__PURE__*/Vue.extend({
     // --- Public methods ---
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$el.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$el);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$el.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$el);
       }
     },
     // --- Private methods ---

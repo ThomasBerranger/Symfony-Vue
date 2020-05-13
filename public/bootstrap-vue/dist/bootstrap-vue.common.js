@@ -1,5 +1,5 @@
 /*!
- * BootstrapVue 2.13.1
+ * BootstrapVue 2.14.0
  *
  * @link https://bootstrap-vue.org
  * @source https://github.com/bootstrap-vue/bootstrap-vue
@@ -1471,6 +1471,18 @@ var removeNode = function removeNode(el) {
 
 var isElement = function isElement(el) {
   return !!(el && el.nodeType === Node.ELEMENT_NODE);
+}; // Get the currently active HTML element
+
+var getActiveElement = function getActiveElement() {
+  var excludes = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+  var activeElement = d.activeElement;
+  return activeElement && !excludes.some(function (el) {
+    return el === activeElement;
+  }) ? activeElement : null;
+}; // Determine if an HTML element is the currently active element
+
+var isActiveElement = function isActiveElement(el) {
+  return isElement(el) && el === getActiveElement();
 }; // Determine if an HTML element is visible - Faster than CSS check
 
 var isVisible = function isVisible(el) {
@@ -1680,10 +1692,28 @@ var position = function position(el)
 // Assumes users have not used `tabindex` > `0` on elements
 
 var getTabables = function getTabables() {
-  var el = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document;
-  return selectAll(TABABLE_SELECTOR, el).filter(isVisible).filter(function (i) {
-    return i.tabIndex > -1 && !i.disabled;
+  var rootEl = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document;
+  return selectAll(TABABLE_SELECTOR, rootEl).filter(isVisible).filter(function (el) {
+    return el.tabIndex > -1 && !el.disabled;
   });
+}; // Attempt to focus an element, and return `true` if successful
+
+var attemptFocus = function attemptFocus(el) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+  try {
+    el.focus(options);
+  } catch (_unused) {}
+
+  return isActiveElement(el);
+}; // Attempt to blur an element, and return `true` if successful
+
+var attemptBlur = function attemptBlur(el) {
+  try {
+    el.blur();
+  } catch (_unused2) {}
+
+  return !isActiveElement(el);
 };
 
 var NO_FADE_PROPS = {
@@ -2407,15 +2437,45 @@ var computeHref = function computeHref() {
   return fallback;
 };
 
+var makePropWatcher = function makePropWatcher(propName) {
+  return {
+    handler: function handler(newVal, oldVal) {
+      for (var key in oldVal) {
+        if (!hasOwnProperty(newVal, key)) {
+          this.$delete(this.$data[propName], key);
+        }
+      }
+
+      for (var _key in newVal) {
+        this.$set(this.$data[propName], _key, newVal[_key]);
+      }
+    }
+  };
+};
+var makePropCacheMixin = function makePropCacheMixin(propName, proxyPropName) {
+  return {
+    data: function data() {
+      return _defineProperty({}, proxyPropName, {});
+    },
+    watch: _defineProperty({}, propName, makePropWatcher(proxyPropName)),
+    created: function created() {
+      this[proxyPropName] = _objectSpread2({}, this[propName]);
+    }
+  };
+};
+
+var attrsMixin = makePropCacheMixin('$attrs', 'bvAttrs');
+
+var listenersMixin = makePropCacheMixin('$listeners', 'bvListeners');
+
 /**
- * The Link component is used in many other BV components.
- * As such, sharing its props makes supporting all its features easier.
- * However, some components need to modify the defaults for their own purpose.
+ * The Link component is used in many other BV components
+ * As such, sharing its props makes supporting all its features easier
+ * However, some components need to modify the defaults for their own purpose
  * Prefer sharing a fresh copy of the props to ensure mutations
- * do not affect other component references to the props.
+ * do not affect other component references to the props
  *
- * https://github.com/vuejs/vue-router/blob/dev/src/components/link.js
- * @return {{}}
+ * See: https://github.com/vuejs/vue-router/blob/dev/src/components/link.js
  */
 
 var propsFactory = function propsFactory() {
@@ -2484,7 +2544,8 @@ var propsFactory = function propsFactory() {
 
 var BLink = /*#__PURE__*/Vue.extend({
   name: 'BLink',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   props: propsFactory(),
   computed: {
@@ -2513,9 +2574,36 @@ var BLink = /*#__PURE__*/Vue.extend({
       }, this.computedTag);
     },
     computedProps: function computedProps() {
-      return this.isRouterLink ? _objectSpread2(_objectSpread2({}, this.$props), {}, {
+      var props = this.isRouterLink ? _objectSpread2(_objectSpread2({}, this.$props), {}, {
         tag: this.routerTag
-      }) : {};
+      }) : {}; // Ensure the `href` prop does not exist for router links
+
+      return this.computedHref ? props : omit(props, ['href']);
+    },
+    computedAttrs: function computedAttrs() {
+      var bvAttrs = this.bvAttrs,
+          href = this.computedHref,
+          rel = this.computedRel,
+          disabled = this.disabled,
+          target = this.target,
+          routerTag = this.routerTag,
+          isRouterLink = this.isRouterLink;
+      return _objectSpread2(_objectSpread2(_objectSpread2(_objectSpread2({}, bvAttrs), href ? {
+        href: href
+      } : {}), isRouterLink && routerTag !== 'a' && routerTag !== 'area' ? {} : {
+        rel: rel,
+        target: target
+      }), {}, {
+        tabindex: disabled ? '-1' : isUndefined(bvAttrs.tabindex) ? null : bvAttrs.tabindex,
+        'aria-disabled': disabled ? 'true' : null
+      });
+    },
+    computedListeners: function computedListeners() {
+      return _objectSpread2(_objectSpread2({}, this.bvListeners), {}, {
+        // We want to overwrite any click handler since our callback
+        // will invoke the user supplied handler(s) if `!this.disabled`
+        click: this.onClick
+      });
     }
   },
   methods: {
@@ -2523,7 +2611,7 @@ var BLink = /*#__PURE__*/Vue.extend({
       var _arguments = arguments;
       var evtIsEvent = isEvent(evt);
       var isRouterLink = this.isRouterLink;
-      var suppliedHandler = this.$listeners.click;
+      var suppliedHandler = this.bvListeners.click;
 
       if (evtIsEvent && this.disabled) {
         // Stop event from bubbling up
@@ -2556,56 +2644,23 @@ var BLink = /*#__PURE__*/Vue.extend({
       }
     },
     focus: function focus() {
-      if (this.$el && this.$el.focus) {
-        this.$el.focus();
-      }
+      attemptFocus(this.$el);
     },
     blur: function blur() {
-      if (this.$el && this.$el.blur) {
-        this.$el.blur();
-      }
+      attemptBlur(this.$el);
     }
   },
   render: function render(h) {
     var active = this.active,
-        disabled = this.disabled,
-        target = this.target,
-        routerTag = this.routerTag,
-        isRouterLink = this.isRouterLink;
-    var tag = this.computedTag;
-    var rel = this.computedRel;
-    var href = this.computedHref;
-    var componentData = {
+        disabled = this.disabled;
+    return h(this.computedTag, _defineProperty({
       class: {
         active: active,
         disabled: disabled
       },
-      attrs: _objectSpread2(_objectSpread2(_objectSpread2({}, this.$attrs), isRouterLink && routerTag !== 'a' && routerTag !== 'area' ? {} : {
-        rel: rel,
-        target: target
-      }), {}, {
-        tabindex: disabled ? '-1' : isUndefined(this.$attrs.tabindex) ? null : this.$attrs.tabindex,
-        'aria-disabled': disabled ? 'true' : null
-      }),
+      attrs: this.computedAttrs,
       props: this.computedProps
-    }; // Add the event handlers. We must use `nativeOn` for
-    // `<router-link>`/`<nuxt-link>` instead of `on`
-
-    componentData[isRouterLink ? 'nativeOn' : 'on'] = _objectSpread2(_objectSpread2({}, this.$listeners), {}, {
-      // We want to overwrite any click handler since our callback
-      // will invoke the user supplied handler(s) if `!this.disabled`
-      click: this.onClick
-    }); // If href attribute exists on <router-link> (even undefined or null) it fails working on
-    // SSR, so we explicitly add it here if needed (i.e. if computedHref() is truthy)
-
-    if (href) {
-      componentData.attrs.href = href;
-    } else {
-      // Ensure the prop HREF does not exist for router links
-      delete componentData.props.href;
-    }
-
-    return h(tag, componentData, this.normalizeSlot('default'));
+    }, this.isRouterLink ? 'nativeOn' : 'on', this.computedListeners), this.normalizeSlot('default'));
   }
 });
 
@@ -4236,7 +4291,7 @@ var props$2 = _objectSpread2(_objectSpread2({
 var computeSize = function computeSize(value) {
   // Default to `md` size when `null`, or parse to
   // number when value is a float-like string
-  value = value === null ? 'md' : isString(value) && RX_NUMBER.test(value) ? toFloat(value, 0) : value; // Convert all numbers to pixel values
+  value = isUndefinedOrNull(value) || value === '' ? 'md' : isString(value) && RX_NUMBER.test(value) ? toFloat(value, 0) : value; // Convert all numbers to pixel values
   // Handle default sizes when `sm`, `md` or `lg`
   // Or use value as is
 
@@ -4244,10 +4299,14 @@ var computeSize = function computeSize(value) {
 }; // --- Main component ---
 // @vue/component
 
-
 var BAvatar = /*#__PURE__*/Vue.extend({
   name: NAME$5,
   mixins: [normalizeSlotMixin],
+  inject: {
+    bvAvatarGroup: {
+      default: null
+    }
+  },
   props: props$2,
   data: function data() {
     return {
@@ -4256,11 +4315,36 @@ var BAvatar = /*#__PURE__*/Vue.extend({
   },
   computed: {
     computedSize: function computedSize() {
-      return computeSize(this.size);
+      // Always use the avatar group size
+      return computeSize(this.bvAvatarGroup ? this.bvAvatarGroup.size : this.size);
     },
-    fontSize: function fontSize() {
+    computedVariant: function computedVariant() {
+      // Prefer avatar-group variant if provided
+      var avatarGroup = this.bvAvatarGroup;
+      return avatarGroup && avatarGroup.variant ? avatarGroup.variant : this.variant;
+    },
+    computedRounded: function computedRounded() {
+      var avatarGroup = this.bvAvatarGroup;
+      var square = avatarGroup && avatarGroup.square ? true : this.square;
+      var rounded = avatarGroup && avatarGroup.rounded ? avatarGroup.rounded : this.rounded;
+      return square ? '0' : rounded === '' ? true : rounded || 'circle';
+    },
+    fontStyle: function fontStyle() {
+      var fontSize = this.computedSize;
+      fontSize = fontSize ? "calc(".concat(fontSize, " * ").concat(FONT_SIZE_SCALE, ")") : null;
+      return fontSize ? {
+        fontSize: fontSize
+      } : {};
+    },
+    marginStyle: function marginStyle() {
+      var avatarGroup = this.bvAvatarGroup;
+      var overlapScale = avatarGroup ? avatarGroup.overlapScale : 0;
       var size = this.computedSize;
-      return size ? "calc(".concat(size, " * ").concat(FONT_SIZE_SCALE, ")") : null;
+      var value = size && overlapScale ? "calc(".concat(size, " * -").concat(overlapScale, ")") : null;
+      return value ? {
+        marginLeft: value,
+        marginRight: value
+      } : {};
     },
     badgeStyle: function badgeStyle() {
       var size = this.computedSize,
@@ -4296,13 +4380,14 @@ var BAvatar = /*#__PURE__*/Vue.extend({
   render: function render(h) {
     var _class2;
 
-    var variant = this.variant,
+    var variant = this.computedVariant,
         disabled = this.disabled,
-        square = this.square,
+        rounded = this.computedRounded,
         icon = this.icon,
         src = this.localSrc,
         text = this.text,
-        fontSize = this.fontSize,
+        fontStyle = this.fontStyle,
+        marginStyle = this.marginStyle,
         size = this.computedSize,
         isButton = this.button,
         type = this.buttonType,
@@ -4311,7 +4396,6 @@ var BAvatar = /*#__PURE__*/Vue.extend({
         badgeStyle = this.badgeStyle;
     var isBLink = !isButton && (this.href || this.to);
     var tag = isButton ? BButton : isBLink ? BLink : 'span';
-    var rounded = square ? false : this.rounded === '' ? true : this.rounded || 'circle';
     var alt = this.alt || null;
     var ariaLabel = this.ariaLabel || null;
     var $content = null;
@@ -4335,6 +4419,9 @@ var BAvatar = /*#__PURE__*/Vue.extend({
           error: this.onImgError
         }
       });
+      $content = h('span', {
+        staticClass: 'b-avatar-img'
+      }, [$content]);
     } else if (icon) {
       $content = h(BIcon, {
         props: {
@@ -4348,9 +4435,7 @@ var BAvatar = /*#__PURE__*/Vue.extend({
     } else if (text) {
       $content = h('span', {
         staticClass: 'b-avatar-text',
-        style: {
-          fontSize: fontSize
-        }
+        style: fontStyle
       }, [h('span', text)]);
     } else {
       // Fallback default avatar content
@@ -4376,11 +4461,11 @@ var BAvatar = /*#__PURE__*/Vue.extend({
 
     var componentData = {
       staticClass: CLASS_NAME$1,
-      class: (_class2 = {}, _defineProperty(_class2, "badge-".concat(variant), !isButton && variant), _defineProperty(_class2, "rounded", rounded === true), _defineProperty(_class2, 'rounded-0', square), _defineProperty(_class2, "rounded-".concat(rounded), rounded && rounded !== true), _defineProperty(_class2, "disabled", disabled), _class2),
-      style: {
+      class: (_class2 = {}, _defineProperty(_class2, "badge-".concat(variant), !isButton && variant), _defineProperty(_class2, "rounded", rounded === true), _defineProperty(_class2, "rounded-".concat(rounded), rounded && rounded !== true), _defineProperty(_class2, "disabled", disabled), _class2),
+      style: _objectSpread2({
         width: size,
         height: size
-      },
+      }, marginStyle),
       attrs: {
         'aria-label': ariaLabel || null
       },
@@ -4397,13 +4482,85 @@ var BAvatar = /*#__PURE__*/Vue.extend({
   }
 });
 
-var AvatarPlugin = /*#__PURE__*/pluginFactory({
-  components: {
-    BAvatar: BAvatar
+var NAME$6 = 'BAvatarGroup'; // --- Main component ---
+// @vue/component
+
+var BAvatarGroup = /*#__PURE__*/Vue.extend({
+  name: NAME$6,
+  mixins: [normalizeSlotMixin],
+  provide: function provide() {
+    return {
+      bvAvatarGroup: this
+    };
+  },
+  props: {
+    variant: {
+      // Child avatars will prefer this variant over their own
+      type: String,
+      default: null
+    },
+    size: {
+      // Child avatars will always use this over their own size
+      type: String,
+      default: null
+    },
+    overlap: {
+      type: [Number, String],
+      default: 0.3
+    },
+    square: {
+      // Child avatars will prefer this prop (if set) over their own
+      type: Boolean,
+      default: false
+    },
+    rounded: {
+      // Child avatars will prefer this prop (if set) over their own
+      type: [Boolean, String],
+      default: false
+    },
+    tag: {
+      type: String,
+      default: 'div'
+    }
+  },
+  computed: {
+    computedSize: function computedSize() {
+      return computeSize(this.size);
+    },
+    overlapScale: function overlapScale() {
+      return mathMin(mathMax(toFloat(this.overlap, 0), 0), 1) / 2;
+    },
+    paddingStyle: function paddingStyle() {
+      var value = this.computedSize;
+      value = value ? "calc(".concat(value, " * ").concat(this.overlapScale, ")") : null;
+      return value ? {
+        paddingLeft: value,
+        paddingRight: value
+      } : {};
+    }
+  },
+  render: function render(h) {
+    var $inner = h('div', {
+      staticClass: 'b-avatar-group-inner',
+      style: this.paddingStyle
+    }, [this.normalizeSlot('default')]);
+    return h(this.tag, {
+      staticClass: 'b-avatar-group',
+      attrs: {
+        role: 'group'
+      }
+    }, [$inner]);
   }
 });
 
-var NAME$6 = 'BBadge';
+var AvatarPlugin = /*#__PURE__*/pluginFactory({
+  components: {
+    BAvatar: BAvatar,
+    BAvatarGroup: BAvatarGroup
+  }
+});
+
+var NAME$7 = 'BBadge';
 var linkProps$2 = propsFactory();
 delete linkProps$2.href.default;
 delete linkProps$2.to.default;
@@ -4415,7 +4572,7 @@ var props$3 = _objectSpread2(_objectSpread2({}, linkProps$2), {}, {
   variant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$6, 'variant');
+      return getComponentConfig(NAME$7, 'variant');
     }
   },
   pill: {
@@ -4425,7 +4582,7 @@ var props$3 = _objectSpread2(_objectSpread2({}, linkProps$2), {}, {
 }); // @vue/component
 
 var BBadge = /*#__PURE__*/Vue.extend({
-  name: NAME$6,
+  name: NAME$7,
   functional: true,
   props: props$3,
   render: function render(h, _ref) {
@@ -4598,7 +4755,7 @@ var ButtonPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$7 = 'BButtonGroup';
+var NAME$8 = 'BButtonGroup';
 var props$6 = {
   vertical: {
     type: Boolean,
@@ -4621,7 +4778,7 @@ var props$6 = {
 }; // @vue/component
 
 var BButtonGroup = /*#__PURE__*/Vue.extend({
-  name: NAME$7,
+  name: NAME$8,
   functional: true,
   props: props$6,
   render: function render(h, _ref) {
@@ -4697,12 +4854,9 @@ var BButtonToolbar = /*#__PURE__*/Vue.extend({
         shift ? this.focusLast(evt) : this.focusNext(evt);
       }
     },
-    setItemFocus: function setItemFocus(item) {
-      item && item.focus && item.focus();
-    },
     focusFirst: function focusFirst() {
       var items = this.getItems();
-      this.setItemFocus(items[0]);
+      attemptFocus(items[0]);
     },
     focusPrev: function focusPrev(evt) {
       var items = this.getItems();
@@ -4710,7 +4864,7 @@ var BButtonToolbar = /*#__PURE__*/Vue.extend({
 
       if (index > -1) {
         items = items.slice(0, index).reverse();
-        this.setItemFocus(items[0]);
+        attemptFocus(items[0]);
       }
     },
     focusNext: function focusNext(evt) {
@@ -4719,12 +4873,12 @@ var BButtonToolbar = /*#__PURE__*/Vue.extend({
 
       if (index > -1) {
         items = items.slice(index + 1);
-        this.setItemFocus(items[0]);
+        attemptFocus(items[0]);
       }
     },
     focusLast: function focusLast() {
       var items = this.getItems().reverse();
-      this.setItemFocus(items[0]);
+      attemptFocus(items[0]);
     },
     getItems: function getItems() {
       var items = selectAll(ITEM_SELECTOR, this.$el);
@@ -4990,11 +5144,9 @@ var isLocaleRTL = function isLocaleRTL(locale) {
   return arrayIncludes(RTL_LANGS, locale1) || arrayIncludes(RTL_LANGS, locale2);
 };
 
-/*
- * SSR Safe Client Side ID attribute generation
- * id's can only be generated client side, after mount.
- * this._uid is not synched between server and client.
- */
+// SSR safe client-side ID attribute generation
+// ID's can only be generated client-side, after mount
+// `this._uid` is not synched between server and client
 // @vue/component
 var idMixin = {
   props: {
@@ -5010,11 +5162,11 @@ var idMixin = {
   },
   computed: {
     safeId: function safeId() {
-      // Computed property that returns a dynamic function for creating the ID.
-      // Reacts to changes in both .id and .localId_ And regens a new function
+      // Computed property that returns a dynamic function for creating the ID
+      // Reacts to changes in both `.id` and `.localId_` and regenerates a new function
       var id = this.id || this.localId_; // We return a function that accepts an optional suffix string
-      // So this computed prop looks and works like a method!!!
-      // But benefits from Vue's Computed prop caching
+      // So this computed prop looks and works like a method
+      // but benefits from Vue's computed prop caching
 
       var fn = function fn(suffix) {
         if (!id) {
@@ -5031,16 +5183,16 @@ var idMixin = {
   mounted: function mounted() {
     var _this = this;
 
-    // mounted only occurs client side
+    // `mounted()` only occurs client-side
     this.$nextTick(function () {
-      // Update dom with auto ID after dom loaded to prevent
-      // SSR hydration errors.
+      // Update DOM with auto-generated ID after mount
+      // to prevent SSR hydration errors
       _this.localId_ = "__BVID__".concat(_this._uid);
     });
   }
 };
 
-var NAME$8 = 'BCalendar'; // Key Codes
+var NAME$9 = 'BCalendar'; // Key Codes
 
 var UP = KEY_CODES.UP,
     DOWN = KEY_CODES.DOWN,
@@ -5062,8 +5214,9 @@ var STR_NARROW = 'narrow'; // --- BCalendar component ---
 // @vue/component
 
 var BCalendar = Vue.extend({
-  name: NAME$8,
-  mixins: [idMixin, normalizeSlotMixin],
+  name: NAME$9,
+  // Mixin order is important!
+  mixins: [attrsMixin, idMixin, normalizeSlotMixin],
   model: {
     // Even though this is the default that Vue assumes, we need
     // to add it for the docs to reflect that this is the model
@@ -5189,79 +5342,79 @@ var BCalendar = Vue.extend({
     labelPrevDecade: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelPrevDecade');
+        return getComponentConfig(NAME$9, 'labelPrevDecade');
       }
     },
     labelPrevYear: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelPrevYear');
+        return getComponentConfig(NAME$9, 'labelPrevYear');
       }
     },
     labelPrevMonth: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelPrevMonth');
+        return getComponentConfig(NAME$9, 'labelPrevMonth');
       }
     },
     labelCurrentMonth: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelCurrentMonth');
+        return getComponentConfig(NAME$9, 'labelCurrentMonth');
       }
     },
     labelNextMonth: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelNextMonth');
+        return getComponentConfig(NAME$9, 'labelNextMonth');
       }
     },
     labelNextYear: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelNextYear');
+        return getComponentConfig(NAME$9, 'labelNextYear');
       }
     },
     labelNextDecade: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelNextDecade');
+        return getComponentConfig(NAME$9, 'labelNextDecade');
       }
     },
     labelToday: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelToday');
+        return getComponentConfig(NAME$9, 'labelToday');
       }
     },
     labelSelected: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelSelected');
+        return getComponentConfig(NAME$9, 'labelSelected');
       }
     },
     labelNoDateSelected: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelNoDateSelected');
+        return getComponentConfig(NAME$9, 'labelNoDateSelected');
       }
     },
     labelCalendar: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelCalendar');
+        return getComponentConfig(NAME$9, 'labelCalendar');
       }
     },
     labelNav: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelNav');
+        return getComponentConfig(NAME$9, 'labelNav');
       }
     },
     labelHelp: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$8, 'labelHelp');
+        return getComponentConfig(NAME$9, 'labelHelp');
       }
     },
     dateFormatOptions: {
@@ -5306,6 +5459,27 @@ var BCalendar = Vue.extend({
     };
   },
   computed: {
+    valueId: function valueId() {
+      return this.safeId();
+    },
+    widgetId: function widgetId() {
+      return this.safeId('_calendar-wrapper_');
+    },
+    navId: function navId() {
+      return this.safeId('_calendar-nav_');
+    },
+    gridId: function gridId() {
+      return this.safeId('_calendar-grid_');
+    },
+    gridCaptionId: function gridCaptionId() {
+      return this.safeId('_calendar-grid-caption_');
+    },
+    gridHelpId: function gridHelpId() {
+      return this.safeId('_calendar-grid-help_');
+    },
+    activeId: function activeId() {
+      return this.activeYMD ? this.safeId("_cell-".concat(this.activeYMD, "_")) : null;
+    },
     // TODO: Use computed props to convert `YYYY-MM-DD` to `Date` object
     selectedDate: function selectedDate() {
       // Selected as a `Date` object
@@ -5656,15 +5830,13 @@ var BCalendar = Vue.extend({
     // Public method(s)
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.grid.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.grid);
       }
     },
     blur: function blur() {
-      try {
-        this.$refs.grid.blur();
-      } catch (_unused2) {}
+      if (!this.disabled) {
+        attemptBlur(this.$refs.grid);
+      }
     },
     // Private methods
     setLive: function setLive(on) {
@@ -5844,28 +6016,26 @@ var BCalendar = Vue.extend({
   render: function render(h) {
     var _this5 = this;
 
-    // If hidden prop is set, render just a placeholder node
+    // If `hidden` prop is set, render just a placeholder node
     if (this.hidden) {
       return h();
     }
 
-    var isLive = this.isLive,
+    var valueId = this.valueId,
+        widgetId = this.widgetId,
+        navId = this.navId,
+        gridId = this.gridId,
+        gridCaptionId = this.gridCaptionId,
+        gridHelpId = this.gridHelpId,
+        activeId = this.activeId,
+        isLive = this.isLive,
         isRTL = this.isRTL,
         activeYMD = this.activeYMD,
         selectedYMD = this.selectedYMD,
         safeId = this.safeId;
     var hideDecadeNav = !this.showDecadeNav;
     var todayYMD = formatYMD(this.getToday());
-    var highlightToday = !this.noHighlightToday; // Pre-compute some IDs
-    // This should be computed props
-
-    var idValue = safeId();
-    var idWidget = safeId('_calendar-wrapper_');
-    var idNav = safeId('_calendar-nav_');
-    var idGrid = safeId('_calendar-grid_');
-    var idGridCaption = safeId('_calendar-grid-caption_');
-    var idGridHelp = safeId('_calendar-grid-help_');
-    var idActive = activeYMD ? safeId("_cell-".concat(activeYMD, "_")) : null; // Header showing current selected date
+    var highlightToday = !this.noHighlightToday; // Header showing current selected date
 
     var $header = h('output', {
       staticClass: 'form-control form-control-sm text-center',
@@ -5874,8 +6044,8 @@ var BCalendar = Vue.extend({
         readonly: this.readonly || this.disabled
       },
       attrs: {
-        id: idValue,
-        for: idGrid,
+        id: valueId,
+        for: gridId,
         role: 'status',
         tabindex: this.disabled ? null : '-1',
         // Mainly for testing purposes, as we do not know
@@ -5972,11 +6142,11 @@ var BCalendar = Vue.extend({
     var $nav = h('div', {
       staticClass: 'b-calendar-nav d-flex',
       attrs: {
-        id: idNav,
+        id: navId,
         role: 'group',
         'aria-hidden': this.disabled ? 'true' : null,
         'aria-label': this.labelNav || null,
-        'aria-controls': idGrid
+        'aria-controls': gridId
       }
     }, [hideDecadeNav ? h() : makeNavBtn($prevDecadeIcon, this.labelPrevDecade, this.gotoPrevDecade, this.prevDecadeDisabled, 'Ctrl+Alt+PageDown'), makeNavBtn($prevYearIcon, this.labelPrevYear, this.gotoPrevYear, this.prevYearDisabled, 'Alt+PageDown'), makeNavBtn($prevMonthIcon, this.labelPrevMonth, this.gotoPrevMonth, this.prevMonthDisabled, 'PageDown'), makeNavBtn($thisMonthIcon, this.labelCurrentMonth, this.gotoCurrentMonth, this.thisMonthDisabled, 'Home'), makeNavBtn($nextMonthIcon, this.labelNextMonth, this.gotoNextMonth, this.nextMonthDisabled, 'PageUp'), makeNavBtn($nextYearIcon, this.labelNextYear, this.gotoNextYear, this.nextYearDisabled, 'Alt+PageUp'), hideDecadeNav ? h() : makeNavBtn($nextDecadeIcon, this.labelNextDecade, this.gotoNextDecade, this.nextDecadeDisabled, 'Ctrl+Alt+PageUp')]); // Caption for calendar grid
 
@@ -5987,7 +6157,7 @@ var BCalendar = Vue.extend({
         'text-muted': this.disabled
       },
       attrs: {
-        id: idGridCaption,
+        id: gridCaptionId,
         'aria-live': isLive ? 'polite' : null,
         'aria-atomic': isLive ? 'true' : null
       }
@@ -6078,7 +6248,7 @@ var BCalendar = Vue.extend({
     var $gridHelp = h('footer', {
       staticClass: 'b-calendar-grid-help border-top small text-muted text-center bg-light',
       attrs: {
-        id: idGridHelp
+        id: gridHelpId
       }
     }, [h('div', {
       staticClass: 'small'
@@ -6087,19 +6257,19 @@ var BCalendar = Vue.extend({
       ref: 'grid',
       staticClass: 'b-calendar-grid form-control h-auto text-center',
       attrs: {
-        id: idGrid,
+        id: gridId,
         role: 'application',
         tabindex: this.disabled ? null : '0',
         'data-month': activeYMD.slice(0, -3),
         // `YYYY-MM`, mainly for testing
         'aria-roledescription': this.labelCalendar || null,
-        'aria-labelledby': idGridCaption,
-        'aria-describedby': idGridHelp,
+        'aria-labelledby': gridCaptionId,
+        'aria-describedby': gridHelpId,
         // `aria-readonly` is not considered valid on `role="application"`
         // https://www.w3.org/TR/wai-aria-1.1/#aria-readonly
         // 'aria-readonly': this.readonly && !this.disabled ? 'true' : null,
         'aria-disabled': this.disabled ? 'true' : null,
-        'aria-activedescendant': idActive
+        'aria-activedescendant': activeId
       },
       on: {
         keydown: this.onKeydownGrid,
@@ -6118,7 +6288,7 @@ var BCalendar = Vue.extend({
         width: this.width
       },
       attrs: {
-        id: idWidget,
+        id: widgetId,
         dir: isRTL ? 'rtl' : 'ltr',
         lang: this.computedLocale || null,
         role: 'group',
@@ -6129,7 +6299,7 @@ var BCalendar = Vue.extend({
         'aria-roledescription': this.roleDescription || null,
         'aria-describedby': [// Should the attr (if present) go last?
         // Or should this attr be a prop?
-        this.$attrs['aria-describedby'], idValue, idGridHelp].filter(identity).join(' ')
+        this.bvAttrs['aria-describedby'], valueId, gridHelpId].filter(identity).join(' ')
       },
       on: {
         keydown: this.onKeydownWrapper
@@ -6248,7 +6418,7 @@ var BCardTitle = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$9 = 'BCardSubTitle';
+var NAME$a = 'BCardSubTitle';
 var props$8 = {
   subTitle: {
     type: String // default: null
@@ -6261,13 +6431,13 @@ var props$8 = {
   subTitleTextVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$9, 'subTitleTextVariant');
+      return getComponentConfig(NAME$a, 'subTitleTextVariant');
     }
   }
 }; // @vue/component
 
 var BCardSubTitle = /*#__PURE__*/Vue.extend({
-  name: NAME$9,
+  name: NAME$a,
   functional: true,
   props: props$8,
   render: function render(h, _ref) {
@@ -6725,7 +6895,7 @@ var VBVisible = {
   unbind: unbind
 };
 
-var NAME$a = 'BImg'; // Blank image with fill template
+var NAME$b = 'BImg'; // Blank image with fill template
 
 var BLANK_TEMPLATE = '<svg width="%{w}" height="%{h}" ' + 'xmlns="http://www.w3.org/2000/svg" ' + 'viewBox="0 0 %{w} %{h}" preserveAspectRatio="none">' + '<rect width="100%" height="100%" style="fill:%{f};"></rect>' + '</svg>';
 var props$e = {
@@ -6802,7 +6972,7 @@ var props$e = {
   blankColor: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$a, 'blankColor');
+      return getComponentConfig(NAME$b, 'blankColor');
     }
   }
 }; // --- Helper methods ---
@@ -6814,7 +6984,7 @@ var makeBlankImgSrc = function makeBlankImgSrc(width, height, color) {
 
 
 var BImg = /*#__PURE__*/Vue.extend({
-  name: NAME$a,
+  name: NAME$b,
   functional: true,
   props: props$e,
   render: function render(h, _ref) {
@@ -6877,7 +7047,7 @@ var BImg = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$b = 'BImgLazy';
+var NAME$c = 'BImgLazy';
 var props$f = {
   src: {
     type: String,
@@ -6911,7 +7081,7 @@ var props$f = {
   blankColor: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$b, 'blankColor');
+      return getComponentConfig(NAME$c, 'blankColor');
     }
   },
   blankWidth: {
@@ -6967,7 +7137,7 @@ var props$f = {
 }; // @vue/component
 
 var BImgLazy = /*#__PURE__*/Vue.extend({
-  name: NAME$b,
+  name: NAME$c,
   directives: {
     bVisible: VBVisible
   },
@@ -7325,7 +7495,7 @@ var eventOnOff = function eventOnOff(on) {
   method.apply(void 0, args);
 };
 
-var NAME$c = 'BCarousel'; // Slide directional classes
+var NAME$d = 'BCarousel'; // Slide directional classes
 
 var DIRECTION = {
   next: {
@@ -7371,7 +7541,7 @@ var getTransitionEndEvent = function getTransitionEndEvent(el) {
 
 
 var BCarousel = /*#__PURE__*/Vue.extend({
-  name: NAME$c,
+  name: NAME$d,
   mixins: [idMixin, normalizeSlotMixin],
   provide: function provide() {
     return {
@@ -7386,25 +7556,25 @@ var BCarousel = /*#__PURE__*/Vue.extend({
     labelPrev: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$c, 'labelPrev');
+        return getComponentConfig(NAME$d, 'labelPrev');
       }
     },
     labelNext: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$c, 'labelNext');
+        return getComponentConfig(NAME$d, 'labelNext');
       }
     },
     labelGotoSlide: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$c, 'labelGotoSlide');
+        return getComponentConfig(NAME$d, 'labelGotoSlide');
       }
     },
     labelIndicators: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$c, 'labelIndicators');
+        return getComponentConfig(NAME$d, 'labelIndicators');
       }
     },
     interval: {
@@ -7630,7 +7800,7 @@ var BCarousel = /*#__PURE__*/Vue.extend({
     restart: function restart()
     /* istanbul ignore next: difficult to test */
     {
-      if (!this.$el.contains(document.activeElement)) {
+      if (!this.$el.contains(getActiveElement())) {
         this.start();
       }
     },
@@ -8251,7 +8421,7 @@ var BVCollapse = /*#__PURE__*/Vue.extend({
       on: TRANSITION_HANDLERS
     }, {
       props: props
-    }), // Note: `<tranition>` supports a single root element only
+    }), // Note: `<transition>` supports a single root element only
     children);
   }
 });
@@ -8323,71 +8493,29 @@ var listenOnRootMixin = {
   }
 };
 
-var allListenTypes = {
-  hover: true,
-  click: true,
-  focus: true
-};
-var BVBoundListeners = '__BV_boundEventListeners__';
+var ENTER$1 = KEY_CODES.ENTER,
+    SPACE$1 = KEY_CODES.SPACE; // Classes to apply to trigger element
 
-var getTargets = function getTargets(binding) {
-  var targets = keys(binding.modifiers || {}).filter(function (t) {
-    return !allListenTypes[t];
-  });
+var CLASS_BV_TOGGLE_COLLAPSED = 'collapsed';
+var CLASS_BV_TOGGLE_NOT_COLLAPSED = 'not-collapsed'; // Property key for handler storage
 
-  if (binding.value) {
-    targets.push(binding.value);
-  }
+var BV_BASE = '__BV_toggle'; // Root event listener property (Function)
 
-  return targets;
-};
+var BV_TOGGLE_ROOT_HANDLER = "".concat(BV_BASE, "_HANDLER__"); // Trigger element click handler property (Function)
 
-var bindTargets = function bindTargets(vnode, binding, listenTypes, fn) {
-  var targets = getTargets(binding);
+var BV_TOGGLE_CLICK_HANDLER = "".concat(BV_BASE, "_CLICK__"); // Target visibility state property (Boolean)
 
-  var listener = function listener() {
-    fn({
-      targets: targets,
-      vnode: vnode
-    });
-  };
+var BV_TOGGLE_STATE = "".concat(BV_BASE, "_STATE__"); // Target ID list property (Array)
 
-  keys(allListenTypes).forEach(function (type) {
-    if (listenTypes[type] || binding.modifiers[type]) {
-      eventOn(vnode.elm, type, listener);
-      var boundListeners = vnode.elm[BVBoundListeners] || {};
-      boundListeners[type] = boundListeners[type] || [];
-      boundListeners[type].push(listener);
-      vnode.elm[BVBoundListeners] = boundListeners;
-    }
-  }); // Return the list of targets
+var BV_TOGGLE_TARGETS = "".concat(BV_BASE, "_TARGETS__"); // Commonly used strings
 
-  return targets;
-};
+var STRING_FALSE = 'false';
+var STRING_TRUE = 'true'; // Commonly used attribute names
 
-var unbindTargets = function unbindTargets(vnode, binding, listenTypes) {
-  keys(allListenTypes).forEach(function (type) {
-    if (listenTypes[type] || binding.modifiers[type]) {
-      var boundListeners = vnode.elm[BVBoundListeners] && vnode.elm[BVBoundListeners][type];
-
-      if (boundListeners) {
-        boundListeners.forEach(function (listener) {
-          return eventOff(vnode.elm, type, listener);
-        });
-        delete vnode.elm[BVBoundListeners][type];
-      }
-    }
-  });
-};
-
-var listenTypes = {
-  click: true
-}; // Property key for handler storage
-
-var BV_TOGGLE = '__BV_toggle__';
-var BV_TOGGLE_STATE = '__BV_toggle_STATE__';
-var BV_TOGGLE_CONTROLS = '__BV_toggle_CONTROLS__';
-var BV_TOGGLE_TARGETS = '__BV_toggle_TARGETS__'; // Emitted control event for collapse (emitted to collapse)
+var ATTR_ARIA_CONTROLS = 'aria-controls';
+var ATTR_ARIA_EXPANDED = 'aria-expanded';
+var ATTR_ROLE = 'role';
+var ATTR_TABINDEX = 'tabindex'; // Emitted control event for collapse (emitted to collapse)
 
 var EVENT_TOGGLE = 'bv::toggle::collapse'; // Listen to event for toggle state update (emitted by collapse)
 
@@ -8397,59 +8525,164 @@ var EVENT_STATE = 'bv::collapse::state'; // Private event emitted on `$root` to 
 
 var EVENT_STATE_SYNC = 'bv::collapse::sync::state'; // Private event we send to collapse to request state update sync event
 
-var EVENT_STATE_REQUEST = 'bv::request::collapse::state'; // Reset and remove a property from the provided element
+var EVENT_STATE_REQUEST = 'bv::request::collapse::state';
+var keyDownEvents = [ENTER$1, SPACE$1];
+var RX_SPLIT_SEPARATOR = /\s+/; // --- Helper methods ---
+
+var isNonStandardTag$1 = function isNonStandardTag(el) {
+  return !arrayIncludes(['BUTTON', 'A'], el.tagName);
+};
+
+var getTargets = function getTargets(_ref) {
+  var modifiers = _ref.modifiers,
+      arg = _ref.arg,
+      value = _ref.value;
+  // Any modifiers are considered target IDs
+  var targets = keys(modifiers || {}); // If value is a string, split out individual targets (if space delimited)
+
+  value = isString(value) ? value.split(RX_SPLIT_SEPARATOR) : value; // Add ID from `arg` (if provided), and support value
+  // as a single string ID or an array of string IDs
+  // If `value` is not an array or string, then it gets filtered out
+
+  concat(arg, value).forEach(function (t) {
+    return isString(t) && targets.push(t);
+  }); // Return only unique and truthy target IDs
+
+  return targets.filter(function (t, index, arr) {
+    return t && arr.indexOf(t) === index;
+  });
+};
+
+var removeClickListener = function removeClickListener(el) {
+  var handler = el[BV_TOGGLE_CLICK_HANDLER];
+
+  if (handler) {
+    eventOff(el, 'click', handler);
+    eventOff(el, 'keydown', handler);
+  }
+
+  el[BV_TOGGLE_CLICK_HANDLER] = null;
+};
+
+var addClickListener = function addClickListener(el, vnode) {
+  removeClickListener(el);
+
+  if (vnode.context) {
+    var handler = function handler(evt) {
+      var targets = el[BV_TOGGLE_TARGETS] || [];
+      var ignore = evt.type === 'keydown' && !arrayIncludes(keyDownEvents, evt.keyCode);
+
+      if (!evt.defaultPrevented && !ignore && !isDisabled(el)) {
+        targets.forEach(function (target) {
+          vnode.context.$root.$emit(EVENT_TOGGLE, target);
+        });
+      }
+    };
+
+    el[BV_TOGGLE_CLICK_HANDLER] = handler;
+    eventOn(el, 'click', handler);
+
+    if (isNonStandardTag$1(el)) {
+      eventOn(el, 'keydown', handler);
+    }
+  }
+};
+
+var removeRootListeners = function removeRootListeners(el, vnode) {
+  if (el[BV_TOGGLE_ROOT_HANDLER] && vnode.context) {
+    vnode.context.$root.$off([EVENT_STATE, EVENT_STATE_SYNC], el[BV_TOGGLE_ROOT_HANDLER]);
+  }
+
+  el[BV_TOGGLE_ROOT_HANDLER] = null;
+};
+
+var addRootListeners = function addRootListeners(el, vnode) {
+  removeRootListeners(el, vnode);
+
+  if (vnode.context) {
+    var handler = function handler(id, state) {
+      // `state` will be `true` if target is expanded
+      if (arrayIncludes(el[BV_TOGGLE_TARGETS] || [], id)) {
+        // Set/Clear 'collapsed' visibility class state
+        el[BV_TOGGLE_STATE] = state; // Set `aria-expanded` and class state on trigger element
+
+        setToggleState(el, state);
+      }
+    };
+
+    el[BV_TOGGLE_ROOT_HANDLER] = handler; // Listen for toggle state changes (public) and sync (private)
+
+    vnode.context.$root.$on([EVENT_STATE, EVENT_STATE_SYNC], handler);
+  }
+};
+
+var setToggleState = function setToggleState(el, state) {
+  // State refers to the visibility of the collapse/sidebar
+  if (state) {
+    removeClass(el, CLASS_BV_TOGGLE_COLLAPSED);
+    addClass(el, CLASS_BV_TOGGLE_NOT_COLLAPSED);
+    setAttr(el, ATTR_ARIA_EXPANDED, STRING_TRUE);
+  } else {
+    removeClass(el, CLASS_BV_TOGGLE_NOT_COLLAPSED);
+    addClass(el, CLASS_BV_TOGGLE_COLLAPSED);
+    setAttr(el, ATTR_ARIA_EXPANDED, STRING_FALSE);
+  }
+}; // Reset and remove a property from the provided element
+
 
 var resetProp = function resetProp(el, prop) {
   el[prop] = null;
   delete el[prop];
-}; // Handle targets update
-
-
-var handleTargets = function handleTargets(_ref) {
-  var targets = _ref.targets,
-      vnode = _ref.vnode;
-  targets.forEach(function (target) {
-    vnode.context.$root.$emit(EVENT_TOGGLE, target);
-  });
 }; // Handle directive updates
-
-/* istanbul ignore next: not easy to test */
 
 
 var handleUpdate = function handleUpdate(el, binding, vnode) {
-  if (!isBrowser) {
+  /* istanbul ignore next: should never happen */
+  if (!isBrowser || !vnode.context) {
     return;
-  }
+  } // If element is not a button or link, we add `role="button"`
+  // and `tabindex="0"` for accessibility reasons
 
-  if (!looseEqual(getTargets(binding), el[BV_TOGGLE_TARGETS])) {
-    // Targets have changed, so update accordingly
-    unbindTargets(vnode, binding, listenTypes);
-    var targets = bindTargets(vnode, binding, listenTypes, handleTargets); // Update targets array to element
 
-    el[BV_TOGGLE_TARGETS] = targets; // Add aria attributes to element
+  if (isNonStandardTag$1(el)) {
+    if (!hasAttr(el, ATTR_ROLE)) {
+      setAttr(el, ATTR_ROLE, 'button');
+    }
 
-    el[BV_TOGGLE_CONTROLS] = targets.join(' '); // ensure aria-controls is up to date
+    if (!hasAttr(el, ATTR_TABINDEX)) {
+      setAttr(el, ATTR_TABINDEX, '0');
+    }
+  } // Ensure the collapse class and `aria-*` attributes persist
+  // after element is updated (either by parent re-rendering
+  // or changes to this element or its contents)
 
-    setAttr(el, 'aria-controls', el[BV_TOGGLE_CONTROLS]); // Request a state update from targets so that we can ensure
-    // expanded state is correct
+
+  setToggleState(el, el[BV_TOGGLE_STATE]); // Parse list of target IDs
+
+  var targets = getTargets(binding);
+  /* istanbul ignore else */
+  // Ensure the `aria-controls` hasn't been overwritten
+  // or removed when vnode updates
+
+  if (targets.length) {
+    setAttr(el, ATTR_ARIA_CONTROLS, targets.join(' '));
+  } else {
+    removeAttr(el, ATTR_ARIA_CONTROLS);
+  } // Add/Update our click listener(s)
+
+
+  addClickListener(el, vnode); // If targets array has changed, update
+
+  if (!looseEqual(targets, el[BV_TOGGLE_TARGETS])) {
+    // Update targets array to element storage
+    el[BV_TOGGLE_TARGETS] = targets; // Ensure `aria-controls` is up to date
+    // Request a state update from targets so that we can
+    // ensure expanded state is correct (in most cases)
 
     targets.forEach(function (target) {
       vnode.context.$root.$emit(EVENT_STATE_REQUEST, target);
     });
-  } // Ensure the collapse class and aria-* attributes persist
-  // after element is updated (either by parent re-rendering
-  // or changes to this element or its contents
-
-
-  if (el[BV_TOGGLE_STATE] === true) {
-    addClass(el, 'collapsed');
-    setAttr(el, 'aria-expanded', 'true');
-  } else if (el[BV_TOGGLE_STATE] === false) {
-    removeClass(el, 'collapsed');
-    setAttr(el, 'aria-expanded', 'false');
   }
-
-  setAttr(el, 'aria-controls', el[BV_TOGGLE_CONTROLS]);
 };
 /*
  * Export our directive
@@ -8458,70 +8691,32 @@ var handleUpdate = function handleUpdate(el, binding, vnode) {
 
 var VBToggle = {
   bind: function bind(el, binding, vnode) {
-    var targets = bindTargets(vnode, binding, listenTypes, handleTargets);
+    // State is initially collapsed until we receive a state event
+    el[BV_TOGGLE_STATE] = false; // Assume no targets initially
 
-    if (isBrowser && vnode.context && targets.length > 0) {
-      // Add targets array to element
-      el[BV_TOGGLE_TARGETS] = targets; // Add aria attributes to element
+    el[BV_TOGGLE_TARGETS] = []; // Add our root listeners
 
-      el[BV_TOGGLE_CONTROLS] = targets.join(' '); // State is initially collapsed until we receive a state event
+    addRootListeners(el, vnode); // Initial update of trigger
 
-      el[BV_TOGGLE_STATE] = false;
-      setAttr(el, 'aria-controls', el[BV_TOGGLE_CONTROLS]);
-      setAttr(el, 'aria-expanded', 'false'); // If element is not a button, we add `role="button"` for accessibility
-
-      if (el.tagName !== 'BUTTON' && !hasAttr(el, 'role')) {
-        setAttr(el, 'role', 'button');
-      } // Toggle state handler
-
-
-      var toggleDirectiveHandler = function toggleDirectiveHandler(id, state) {
-        var targets = el[BV_TOGGLE_TARGETS] || [];
-
-        if (targets.indexOf(id) !== -1) {
-          // Set aria-expanded state
-          setAttr(el, 'aria-expanded', state ? 'true' : 'false'); // Set/Clear 'collapsed' class state
-
-          el[BV_TOGGLE_STATE] = state;
-
-          if (state) {
-            removeClass(el, 'collapsed');
-          } else {
-            addClass(el, 'collapsed');
-          }
-        }
-      }; // Store the toggle handler on the element
-
-
-      el[BV_TOGGLE] = toggleDirectiveHandler; // Listen for toggle state changes (public)
-
-      vnode.context.$root.$on(EVENT_STATE, el[BV_TOGGLE]); // Listen for toggle state sync (private)
-
-      vnode.context.$root.$on(EVENT_STATE_SYNC, el[BV_TOGGLE]);
-    }
+    handleUpdate(el, binding, vnode);
   },
   componentUpdated: handleUpdate,
   updated: handleUpdate,
-  unbind: function unbind(el, binding, vnode)
-  /* istanbul ignore next */
-  {
-    unbindTargets(vnode, binding, listenTypes); // Remove our $root listener
+  unbind: function unbind(el, binding, vnode) {
+    removeClickListener(el); // Remove our $root listener
 
-    if (el[BV_TOGGLE]) {
-      vnode.context.$root.$off(EVENT_STATE, el[BV_TOGGLE]);
-      vnode.context.$root.$off(EVENT_STATE_SYNC, el[BV_TOGGLE]);
-    } // Reset custom  props
+    removeRootListeners(el, vnode); // Reset custom props
 
-
-    resetProp(el, BV_TOGGLE);
+    resetProp(el, BV_TOGGLE_ROOT_HANDLER);
+    resetProp(el, BV_TOGGLE_CLICK_HANDLER);
     resetProp(el, BV_TOGGLE_STATE);
-    resetProp(el, BV_TOGGLE_CONTROLS);
     resetProp(el, BV_TOGGLE_TARGETS); // Reset classes/attrs
 
-    removeClass(el, 'collapsed');
-    removeAttr(el, 'aria-expanded');
-    removeAttr(el, 'aria-controls');
-    removeAttr(el, 'role');
+    removeClass(el, CLASS_BV_TOGGLE_COLLAPSED);
+    removeClass(el, CLASS_BV_TOGGLE_NOT_COLLAPSED);
+    removeAttr(el, ATTR_ARIA_EXPANDED);
+    removeAttr(el, ATTR_ARIA_CONTROLS);
+    removeAttr(el, ATTR_ROLE);
   }
 };
 
@@ -8786,12 +8981,18 @@ var BCollapse = /*#__PURE__*/Vue.extend({
   }
 });
 
+var VBTogglePlugin = /*#__PURE__*/pluginFactory({
+  directives: {
+    VBToggle: VBToggle
+  }
+});
+
 var CollapsePlugin = /*#__PURE__*/pluginFactory({
   components: {
     BCollapse: BCollapse
   },
-  directives: {
-    VBToggle: VBToggle
+  plugins: {
+    VBTogglePlugin: VBTogglePlugin
   }
 });
 
@@ -9419,39 +9620,30 @@ var dropdownMixin = {
         _this3.focusItem(index, items);
       });
     },
-    focusItem: function focusItem(idx, items) {
+    focusItem: function focusItem(index, items) {
       var el = items.find(function (el, i) {
-        return i === idx;
+        return i === index;
       });
-
-      if (el && el.focus) {
-        el.focus();
-      }
+      attemptFocus(el);
     },
     getItems: function getItems() {
       // Get all items
       return filterVisibles(selectAll(Selector.ITEM_SELECTOR, this.$refs.menu));
     },
     focusMenu: function focusMenu() {
-      try {
-        this.$refs.menu.focus();
-      } catch (_unused2) {}
+      attemptFocus(this.$refs.menu);
     },
     focusToggler: function focusToggler() {
       var _this4 = this;
 
       this.$nextTick(function () {
-        var toggler = _this4.toggler;
-
-        if (toggler && toggler.focus) {
-          toggler.focus();
-        }
+        attemptFocus(_this4.toggler);
       });
     }
   }
 };
 
-var NAME$d = 'BDropdown';
+var NAME$e = 'BDropdown';
 var props$k = {
   text: {
     // Button label
@@ -9466,13 +9658,13 @@ var props$k = {
   size: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$d, 'size');
+      return getComponentConfig(NAME$e, 'size');
     }
   },
   variant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$d, 'variant');
+      return getComponentConfig(NAME$e, 'variant');
     }
   },
   block: {
@@ -9491,7 +9683,7 @@ var props$k = {
     // This really should be toggleLabel
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$d, 'toggleText');
+      return getComponentConfig(NAME$e, 'toggleText');
     }
   },
   toggleClass: {
@@ -9517,7 +9709,7 @@ var props$k = {
   splitVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$d, 'splitVariant');
+      return getComponentConfig(NAME$e, 'splitVariant');
     }
   },
   splitClass: {
@@ -9543,7 +9735,7 @@ var props$k = {
 }; // @vue/component
 
 var BDropdown = /*#__PURE__*/Vue.extend({
-  name: NAME$d,
+  name: NAME$e,
   mixins: [idMixin, dropdownMixin, normalizeSlotMixin],
   props: props$k,
   computed: {
@@ -9664,7 +9856,7 @@ var props$l = propsFactory(); // @vue/component
 
 var BDropdownItem = /*#__PURE__*/Vue.extend({
   name: 'BDropdownItem',
-  mixins: [normalizeSlotMixin],
+  mixins: [attrsMixin, normalizeSlotMixin],
   inheritAttrs: false,
   inject: {
     bvDropdown: {
@@ -9681,6 +9873,13 @@ var BDropdownItem = /*#__PURE__*/Vue.extend({
       default: null
     }
   }),
+  computed: {
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        role: 'menuitem'
+      });
+    }
+  },
   methods: {
     closeDropdown: function closeDropdown() {
       var _this = this;
@@ -9706,9 +9905,7 @@ var BDropdownItem = /*#__PURE__*/Vue.extend({
       props: this.$props,
       staticClass: 'dropdown-item',
       class: [this.linkClass, _defineProperty({}, "text-".concat(this.variant), this.variant && !(this.active || this.disabled))],
-      attrs: _objectSpread2(_objectSpread2({}, this.$attrs), {}, {
-        role: 'menuitem'
-      }),
+      attrs: this.computedAttrs,
       on: {
         click: this.onClick
       },
@@ -9742,7 +9939,7 @@ var props$m = {
 
 var BDropdownItemButton = /*#__PURE__*/Vue.extend({
   name: 'BDropdownItemButton',
-  mixins: [normalizeSlotMixin],
+  mixins: [attrsMixin, normalizeSlotMixin],
   inheritAttrs: false,
   inject: {
     bvDropdown: {
@@ -9750,6 +9947,15 @@ var BDropdownItemButton = /*#__PURE__*/Vue.extend({
     }
   },
   props: props$m,
+  computed: {
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        role: 'menuitem',
+        type: 'button',
+        disabled: this.disabled
+      });
+    }
+  },
   methods: {
     closeDropdown: function closeDropdown() {
       if (this.bvDropdown) {
@@ -9771,11 +9977,7 @@ var BDropdownItemButton = /*#__PURE__*/Vue.extend({
     }, [h('button', {
       staticClass: 'dropdown-item',
       class: [this.buttonClass, (_ref = {}, _defineProperty(_ref, this.activeClass, this.active), _defineProperty(_ref, "text-".concat(this.variant), this.variant && !(this.active || this.disabled)), _ref)],
-      attrs: _objectSpread2(_objectSpread2({}, this.$attrs), {}, {
-        role: 'menuitem',
-        type: 'button',
-        disabled: this.disabled
-      }),
+      attrs: this.computedAttrs,
       on: {
         click: this.onClick
       },
@@ -10217,7 +10419,7 @@ var BFormDatalist = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$e = 'BFormText';
+var NAME$f = 'BFormText';
 var props$s = {
   id: {
     type: String // default: null
@@ -10230,7 +10432,7 @@ var props$s = {
   textVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$e, 'textVariant');
+      return getComponentConfig(NAME$f, 'textVariant');
     }
   },
   inline: {
@@ -10240,7 +10442,7 @@ var props$s = {
 }; // @vue/component
 
 var BFormText = /*#__PURE__*/Vue.extend({
-  name: NAME$e,
+  name: NAME$f,
   functional: true,
   props: props$s,
   render: function render(h, _ref) {
@@ -10467,7 +10669,7 @@ var formMixin = {
               el = select(SELECTOR, el);
             }
 
-            el && el.focus && el.focus();
+            attemptFocus(el);
           }
         });
       });
@@ -10476,7 +10678,7 @@ var formMixin = {
 };
 
 var formRadioCheckMixin = {
-  mixins: [normalizeSlotMixin],
+  mixins: [attrsMixin, normalizeSlotMixin],
   inheritAttrs: false,
   model: {
     prop: 'checked',
@@ -10599,6 +10801,20 @@ var formRadioCheckMixin = {
 
       // Same for radio & check
       return ['btn', "btn-".concat(this.getButtonVariant), (_ref = {}, _defineProperty(_ref, "btn-".concat(this.getSize), this.getSize), _defineProperty(_ref, "disabled", this.isDisabled), _defineProperty(_ref, "active", this.isChecked), _defineProperty(_ref, "focus", this.hasFocus), _ref)];
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        id: this.safeId(),
+        type: this.isRadio ? 'radio' : 'checkbox',
+        name: this.getName,
+        form: this.getForm,
+        disabled: this.isDisabled,
+        required: this.isRequired,
+        autocomplete: 'off',
+        'aria-required': this.isRequired || null,
+        'aria-label': this.ariaLabel || null,
+        'aria-labelledby': this.ariaLabelledby || null
+      });
     }
   },
   watch: {
@@ -10620,13 +10836,13 @@ var formRadioCheckMixin = {
     },
     // Convenience methods for focusing the input
     focus: function focus() {
-      if (!this.isDisabled && this.$refs.input && this.$refs.input.focus) {
-        this.$refs.input.focus();
+      if (!this.isDisabled) {
+        attemptFocus(this.$refs.input);
       }
     },
     blur: function blur() {
-      if (!this.isDisabled && this.$refs.input && this.$refs.input.blur) {
-        this.$refs.input.blur();
+      if (!this.isDisabled) {
+        attemptBlur(this.$refs.input);
       }
     }
   },
@@ -10660,18 +10876,7 @@ var formRadioCheckMixin = {
         value: this.computedLocalChecked,
         expression: 'computedLocalChecked'
       }],
-      attrs: _objectSpread2(_objectSpread2({}, this.$attrs), {}, {
-        id: this.safeId(),
-        type: this.isRadio ? 'radio' : 'checkbox',
-        name: this.getName,
-        form: this.getForm,
-        disabled: this.isDisabled,
-        required: this.isRequired,
-        autocomplete: 'off',
-        'aria-required': this.isRequired || null,
-        'aria-label': this.ariaLabel || null,
-        'aria-labelledby': this.ariaLabelledby || null
-      }),
+      attrs: this.computedAttrs,
       domProps: {
         value: this.value,
         checked: this.isChecked
@@ -11262,16 +11467,12 @@ var BVFormBtnLabelControl = /*#__PURE__*/Vue.extend({
   methods: {
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.toggle.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.toggle);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.toggle.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$refs.toggle);
       }
     },
     setFocus: function setFocus(evt) {
@@ -11431,10 +11632,10 @@ var BVFormBtnLabelControl = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$f = 'BFormDatepicker'; // Fallback to BCalendar prop if no value found
+var NAME$g = 'BFormDatepicker'; // Fallback to BCalendar prop if no value found
 
 var getConfigFallback = function getConfigFallback(prop) {
-  return getComponentConfig(NAME$f, prop) || getComponentConfig('BCalendar', prop);
+  return getComponentConfig(NAME$g, prop) || getComponentConfig('BCalendar', prop);
 }; // We create our props as a mixin so that we can control
 // where they appear in the props listing reference section
 
@@ -11571,7 +11772,7 @@ var propsMixin = {
     labelTodayButton: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$f, 'labelTodayButton');
+        return getComponentConfig(NAME$g, 'labelTodayButton');
       }
     },
     todayButtonVariant: {
@@ -11585,7 +11786,7 @@ var propsMixin = {
     labelResetButton: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$f, 'labelResetButton');
+        return getComponentConfig(NAME$g, 'labelResetButton');
       }
     },
     resetButtonVariant: {
@@ -11599,7 +11800,7 @@ var propsMixin = {
     labelCloseButton: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$f, 'labelCloseButton');
+        return getComponentConfig(NAME$g, 'labelCloseButton');
       }
     },
     closeButtonVariant: {
@@ -11732,7 +11933,7 @@ var propsMixin = {
 // @vue/component
 
 var BFormDatepicker = /*#__PURE__*/Vue.extend({
-  name: NAME$f,
+  name: NAME$g,
   // The mixins order determines the order of appearance in the props reference section
   mixins: [idMixin, propsMixin],
   model: {
@@ -11832,16 +12033,12 @@ var BFormDatepicker = /*#__PURE__*/Vue.extend({
     // Public methods
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.focus();
-        } catch (_unused2) {}
+        attemptFocus(this.$refs.control);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.blur();
-        } catch (_unused3) {}
+        attemptBlur(this.$refs.control);
       }
     },
     // Private methods
@@ -11900,9 +12097,7 @@ var BFormDatepicker = /*#__PURE__*/Vue.extend({
       var _this3 = this;
 
       this.$nextTick(function () {
-        try {
-          _this3.$refs.calendar.focus();
-        } catch (_unused4) {}
+        attemptFocus(_this3.$refs.calendar);
 
         _this3.$emit('shown');
       });
@@ -12054,7 +12249,7 @@ var formCustomMixin = {
   }
 };
 
-var NAME$g = 'BFormFile';
+var NAME$h = 'BFormFile';
 var VALUE_EMPTY_DEPRECATED_MSG = 'Setting "value"/"v-model" to an empty string for reset is deprecated. Set to "null" instead.'; // --- Helper methods ---
 
 var isValidValue = function isValidValue(value) {
@@ -12065,8 +12260,8 @@ var isValidValue = function isValidValue(value) {
 
 
 var BFormFile = /*#__PURE__*/Vue.extend({
-  name: NAME$g,
-  mixins: [idMixin, formMixin, formStateMixin, formCustomMixin, normalizeSlotMixin],
+  name: NAME$h,
+  mixins: [attrsMixin, idMixin, formMixin, formStateMixin, formCustomMixin, normalizeSlotMixin],
   inheritAttrs: false,
   model: {
     prop: 'value',
@@ -12085,7 +12280,7 @@ var BFormFile = /*#__PURE__*/Vue.extend({
       validator: function validator(value) {
         /* istanbul ignore next */
         if (value === '') {
-          warn(VALUE_EMPTY_DEPRECATED_MSG, NAME$g);
+          warn(VALUE_EMPTY_DEPRECATED_MSG, NAME$h);
           return true;
         }
 
@@ -12104,19 +12299,19 @@ var BFormFile = /*#__PURE__*/Vue.extend({
     placeholder: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$g, 'placeholder');
+        return getComponentConfig(NAME$h, 'placeholder');
       }
     },
     browseText: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$g, 'browseText');
+        return getComponentConfig(NAME$h, 'browseText');
       }
     },
     dropPlaceholder: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$g, 'dropPlaceholder');
+        return getComponentConfig(NAME$h, 'dropPlaceholder');
       }
     },
     multiple: {
@@ -12176,6 +12371,21 @@ var BFormFile = /*#__PURE__*/Vue.extend({
           return file.name;
         }).join(', ');
       }
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        type: 'file',
+        id: this.safeId(),
+        name: this.name,
+        disabled: this.disabled,
+        required: this.required,
+        form: this.form || null,
+        capture: this.capture || null,
+        accept: this.accept || null,
+        multiple: this.multiple,
+        webkitdirectory: this.directory,
+        'aria-required': this.required ? 'true' : null
+      });
     }
   },
   watch: {
@@ -12360,19 +12570,7 @@ var BFormFile = /*#__PURE__*/Vue.extend({
         'custom-file-input': this.custom,
         focus: this.custom && this.hasFocus
       }, this.stateClass],
-      attrs: _objectSpread2(_objectSpread2({}, this.$attrs), {}, {
-        type: 'file',
-        id: this.safeId(),
-        name: this.name,
-        disabled: this.disabled,
-        required: this.required,
-        form: this.form || null,
-        capture: this.capture || null,
-        accept: this.accept || null,
-        multiple: this.multiple,
-        webkitdirectory: this.directory,
-        'aria-required': this.required ? 'true' : null
-      }),
+      attrs: this.computedAttrs,
       on: {
         change: this.onFileChange,
         focusin: this.focusHandler,
@@ -12588,7 +12786,7 @@ var BCol = {
 
 // Component name
 
-var NAME$h = 'BFormGroup'; // Selector for finding first input in the form-group
+var NAME$i = 'BFormGroup'; // Selector for finding first input in the form-group
 
 var SELECTOR$1 = 'input:not([disabled]),textarea:not([disabled]),select:not([disabled])'; // --- Render methods ---
 
@@ -12797,7 +12995,7 @@ var generateProps$1 = function generateProps() {
 
 
 var BFormGroup = {
-  name: NAME$h,
+  name: NAME$i,
   mixins: [idMixin, formStateMixin, normalizeSlotMixin],
 
   get props() {
@@ -12922,13 +13120,10 @@ var BFormGroup = {
         return;
       }
 
-      var inputs = selectAll(SELECTOR$1, this.$refs.content).filter(isVisible);
+      var inputs = selectAll(SELECTOR$1, this.$refs.content).filter(isVisible); // If only a single input, focus it, emulating label behaviour
 
-      if (inputs && inputs.length === 1 && inputs[0].focus) {
-        // if only a single input, focus it, emulating label behaviour
-        try {
-          inputs[0].focus();
-        } catch (_unused) {}
+      if (inputs && inputs.length === 1) {
+        attemptFocus(inputs[0]);
       }
     },
     setInputDescribedBy: function setInputDescribedBy(add, remove) {
@@ -13008,6 +13203,79 @@ var FormGroupPlugin = /*#__PURE__*/pluginFactory({
     BFormFieldset: BFormGroup
   }
 });
+
+// @vue/component
+var formSelectionMixin = {
+  computed: {
+    selectionStart: {
+      // Expose selectionStart for formatters, etc
+      cache: false,
+
+      /* istanbul ignore next */
+      get: function get() {
+        return this.$refs.input.selectionStart;
+      },
+
+      /* istanbul ignore next */
+      set: function set(val) {
+        this.$refs.input.selectionStart = val;
+      }
+    },
+    selectionEnd: {
+      // Expose selectionEnd for formatters, etc
+      cache: false,
+
+      /* istanbul ignore next */
+      get: function get() {
+        return this.$refs.input.selectionEnd;
+      },
+
+      /* istanbul ignore next */
+      set: function set(val) {
+        this.$refs.input.selectionEnd = val;
+      }
+    },
+    selectionDirection: {
+      // Expose selectionDirection for formatters, etc
+      cache: false,
+
+      /* istanbul ignore next */
+      get: function get() {
+        return this.$refs.input.selectionDirection;
+      },
+
+      /* istanbul ignore next */
+      set: function set(val) {
+        this.$refs.input.selectionDirection = val;
+      }
+    }
+  },
+  methods: {
+    /* istanbul ignore next */
+    select: function select() {
+      var _this$$refs$input;
+
+      // For external handler that may want a select() method
+      (_this$$refs$input = this.$refs.input).select.apply(_this$$refs$input, arguments);
+    },
+
+    /* istanbul ignore next */
+    setSelectionRange: function setSelectionRange() {
+      var _this$$refs$input2;
+
+      // For external handler that may want a setSelectionRange(a,b,c) method
+      (_this$$refs$input2 = this.$refs.input).setSelectionRange.apply(_this$$refs$input2, arguments);
+    },
+
+    /* istanbul ignore next */
+    setRangeText: function setRangeText() {
+      var _this$$refs$input3;
+
+      // For external handler that may want a setRangeText(a,b,c) method
+      (_this$$refs$input3 = this.$refs.input).setRangeText.apply(_this$$refs$input3, arguments);
+    }
+  }
+};
 
 var formTextMixin = {
   model: {
@@ -13270,87 +13538,14 @@ var formTextMixin = {
     focus: function focus() {
       // For external handler that may want a focus method
       if (!this.disabled) {
-        this.$el.focus();
+        attemptFocus(this.$el);
       }
     },
     blur: function blur() {
       // For external handler that may want a blur method
       if (!this.disabled) {
-        this.$el.blur();
+        attemptBlur(this.$el);
       }
-    }
-  }
-};
-
-// @vue/component
-var formSelectionMixin = {
-  computed: {
-    selectionStart: {
-      // Expose selectionStart for formatters, etc
-      cache: false,
-
-      /* istanbul ignore next */
-      get: function get() {
-        return this.$refs.input.selectionStart;
-      },
-
-      /* istanbul ignore next */
-      set: function set(val) {
-        this.$refs.input.selectionStart = val;
-      }
-    },
-    selectionEnd: {
-      // Expose selectionEnd for formatters, etc
-      cache: false,
-
-      /* istanbul ignore next */
-      get: function get() {
-        return this.$refs.input.selectionEnd;
-      },
-
-      /* istanbul ignore next */
-      set: function set(val) {
-        this.$refs.input.selectionEnd = val;
-      }
-    },
-    selectionDirection: {
-      // Expose selectionDirection for formatters, etc
-      cache: false,
-
-      /* istanbul ignore next */
-      get: function get() {
-        return this.$refs.input.selectionDirection;
-      },
-
-      /* istanbul ignore next */
-      set: function set(val) {
-        this.$refs.input.selectionDirection = val;
-      }
-    }
-  },
-  methods: {
-    /* istanbul ignore next */
-    select: function select() {
-      var _this$$refs$input;
-
-      // For external handler that may want a select() method
-      (_this$$refs$input = this.$refs.input).select.apply(_this$$refs$input, arguments);
-    },
-
-    /* istanbul ignore next */
-    setSelectionRange: function setSelectionRange() {
-      var _this$$refs$input2;
-
-      // For external handler that may want a setSelectionRange(a,b,c) method
-      (_this$$refs$input2 = this.$refs.input).setSelectionRange.apply(_this$$refs$input2, arguments);
-    },
-
-    /* istanbul ignore next */
-    setRangeText: function setRangeText() {
-      var _this$$refs$input3;
-
-      // For external handler that may want a setRangeText(a,b,c) method
-      (_this$$refs$input3 = this.$refs.input).setRangeText.apply(_this$$refs$input3, arguments);
     }
   }
 };
@@ -13417,10 +13612,10 @@ var TYPES = ['text', 'password', 'email', 'number', 'url', 'tel', 'search', 'ran
 
 var BFormInput = /*#__PURE__*/Vue.extend({
   name: 'BFormInput',
-  mixins: [idMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
+  // Mixin order is important!
+  mixins: [listenersMixin, idMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
   props: {
-    // value prop defined in form-text mixin
-    // value: { },
+    // `value` prop is defined in form-text mixin
     type: {
       type: String,
       default: 'text',
@@ -13429,7 +13624,8 @@ var BFormInput = /*#__PURE__*/Vue.extend({
       }
     },
     noWheel: {
-      // Disable mousewheel to prevent wheel from changing values (i.e. number/date).
+      // Disable mousewheel to prevent wheel from
+      // changing values (i.e. number/date)
       type: Boolean,
       default: false
     },
@@ -13454,6 +13650,39 @@ var BFormInput = /*#__PURE__*/Vue.extend({
     localType: function localType() {
       // We only allow certain types
       return arrayIncludes(TYPES, this.type) ? this.type : 'text';
+    },
+    computedAttrs: function computedAttrs() {
+      var type = this.localType,
+          disabled = this.disabled,
+          placeholder = this.placeholder,
+          required = this.required,
+          min = this.min,
+          max = this.max,
+          step = this.step;
+      return {
+        id: this.safeId(),
+        name: this.name || null,
+        form: this.form || null,
+        type: type,
+        disabled: disabled,
+        placeholder: placeholder,
+        required: required,
+        autocomplete: this.autocomplete || null,
+        readonly: this.readonly || this.plaintext,
+        min: min,
+        max: max,
+        step: step,
+        list: type !== 'password' ? this.list : null,
+        'aria-required': required ? 'true' : null,
+        'aria-invalid': this.computedAriaInvalid
+      };
+    },
+    computedListeners: function computedListeners() {
+      return _objectSpread2(_objectSpread2({}, this.bvListeners), {}, {
+        input: this.onInput,
+        change: this.onChange,
+        blur: this.onBlur
+      });
     }
   },
   watch: {
@@ -13503,45 +13732,18 @@ var BFormInput = /*#__PURE__*/Vue.extend({
     },
     stopWheel: function stopWheel(evt) {
       evt.preventDefault();
-      this.$el.blur();
+      attemptBlur(this.$el);
     }
   },
   render: function render(h) {
-    var self = this;
     return h('input', {
       ref: 'input',
-      class: self.computedClass,
-      directives: [{
-        name: 'model',
-        rawName: 'v-model',
-        value: self.localValue,
-        expression: 'localValue'
-      }],
-      attrs: {
-        id: self.safeId(),
-        name: self.name,
-        form: self.form || null,
-        type: self.localType,
-        disabled: self.disabled,
-        placeholder: self.placeholder,
-        required: self.required,
-        autocomplete: self.autocomplete || null,
-        readonly: self.readonly || self.plaintext,
-        min: self.min,
-        max: self.max,
-        step: self.step,
-        list: self.localType !== 'password' ? self.list : null,
-        'aria-required': self.required ? 'true' : null,
-        'aria-invalid': self.computedAriaInvalid
-      },
+      class: this.computedClass,
+      attrs: this.computedAttrs,
       domProps: {
-        value: self.localValue
+        value: this.localValue
       },
-      on: _objectSpread2(_objectSpread2({}, self.$listeners), {}, {
-        input: self.onInput,
-        change: self.onChange,
-        blur: self.onBlur
-      })
+      on: this.computedListeners
     });
   }
 });
@@ -13591,7 +13793,7 @@ var FormRadioPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$i = 'BFormRating';
+var NAME$j = 'BFormRating';
 var MIN_STARS = 3;
 var DEFAULT_STARS = 5;
 var LEFT$1 = KEY_CODES.LEFT,
@@ -13690,7 +13892,7 @@ var clampValue = function clampValue(value, min, max) {
 
 
 var BFormRating = /*#__PURE__*/Vue.extend({
-  name: NAME$i,
+  name: NAME$j,
   components: {
     BIconStar: BIconStar,
     BIconStarHalf: BIconStarHalf,
@@ -13717,14 +13919,14 @@ var BFormRating = /*#__PURE__*/Vue.extend({
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$i, 'variant');
+        return getComponentConfig(NAME$j, 'variant');
       }
     },
     color: {
       // CSS color string (overrides variant)
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$i, 'color');
+        return getComponentConfig(NAME$j, 'color');
       }
     },
     showValue: {
@@ -13861,16 +14063,12 @@ var BFormRating = /*#__PURE__*/Vue.extend({
     // --- Public methods ---
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$el.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$el);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$el.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$el);
       }
     },
     // --- Private methods ---
@@ -14104,7 +14302,7 @@ var optionsMixin = {
   }
 };
 
-var NAME$j = 'BFormSelectOption';
+var NAME$k = 'BFormSelectOption';
 var props$y = {
   value: {
     // type: [String, Number, Boolean, Object],
@@ -14117,7 +14315,7 @@ var props$y = {
 }; // @vue/component
 
 var BFormSelectOption = /*#__PURE__*/Vue.extend({
-  name: NAME$j,
+  name: NAME$k,
   functional: true,
   props: props$y,
   render: function render(h, _ref) {
@@ -14222,10 +14420,10 @@ var BFormSelect = /*#__PURE__*/Vue.extend({
   },
   methods: {
     focus: function focus() {
-      this.$refs.input.focus();
+      attemptFocus(this.$refs.input);
     },
     blur: function blur() {
-      this.$refs.input.blur();
+      attemptBlur(this.$refs.input);
     }
   },
   render: function render(h) {
@@ -14298,7 +14496,7 @@ var FormSelectPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$k = 'BFormSpinbutton';
+var NAME$l = 'BFormSpinbutton';
 var UP$2 = KEY_CODES.UP,
     DOWN$2 = KEY_CODES.DOWN,
     HOME$1 = KEY_CODES.HOME,
@@ -14320,8 +14518,9 @@ var DEFAULT_REPEAT_MULTIPLIER = 4; // --- BFormSpinbutton ---
 // @vue/component
 
 var BFormSpinbutton = /*#__PURE__*/Vue.extend({
-  name: NAME$k,
-  mixins: [idMixin, normalizeSlotMixin],
+  name: NAME$l,
+  // Mixin order is important!
+  mixins: [attrsMixin, idMixin, normalizeSlotMixin],
   inheritAttrs: false,
   props: {
     value: {
@@ -14402,13 +14601,13 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     labelDecrement: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$k, 'labelDecrement');
+        return getComponentConfig(NAME$l, 'labelDecrement');
       }
     },
     labelIncrement: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$k, 'labelIncrement');
+        return getComponentConfig(NAME$l, 'labelIncrement');
       }
     },
     locale: {
@@ -14439,6 +14638,18 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     };
   },
   computed: {
+    spinId: function spinId() {
+      return this.safeId();
+    },
+    computedInline: function computedInline() {
+      return this.inline && !this.vertical;
+    },
+    computedReadonly: function computedReadonly() {
+      return this.readonly && !this.disabled;
+    },
+    computedRequired: function computedRequired() {
+      return this.required && !this.computedReadonly && !this.disabled;
+    },
     computedStep: function computedStep() {
       return toFloat(this.step, DEFAULT_STEP);
     },
@@ -14499,6 +14710,46 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       }); // Return the format method reference
 
       return nf.format;
+    },
+    computedFormatter: function computedFormatter() {
+      return isFunction(this.formatterFn) ? this.formatterFn : this.defaultFormatter;
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        role: 'group',
+        lang: this.computedLocale,
+        tabindex: this.disabled ? null : '-1',
+        title: this.ariaLabel
+      });
+    },
+    computedSpinAttrs: function computedSpinAttrs() {
+      var spinId = this.spinId,
+          value = this.localValue,
+          required = this.computedRequired,
+          disabled = this.disabled,
+          state = this.state,
+          computedFormatter = this.computedFormatter;
+      var hasValue = !isNull(value);
+      return _objectSpread2(_objectSpread2({
+        dir: this.computedRTL ? 'rtl' : 'ltr'
+      }, this.bvAttrs), {}, {
+        id: spinId,
+        role: 'spinbutton',
+        tabindex: disabled ? null : '0',
+        'aria-live': 'off',
+        'aria-label': this.ariaLabel || null,
+        'aria-controls': this.ariaControls || null,
+        // TODO: May want to check if the value is in range
+        'aria-invalid': state === false || !hasValue && required ? 'true' : null,
+        'aria-required': required ? 'true' : null,
+        // These attrs are required for role spinbutton
+        'aria-valuemin': toString$1(this.computedMin),
+        'aria-valuemax': toString$1(this.computedMax),
+        // These should be `null` if the value is out of range
+        // They must also be non-existent attrs if the value is out of range or `null`
+        'aria-valuenow': hasValue ? value : null,
+        'aria-valuetext': hasValue ? computedFormatter(value) : null
+      });
     }
   },
   watch: {
@@ -14539,16 +14790,12 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     // --- Public methods ---
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.spinner.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.spinner);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.spinner.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$refs.spinner);
       }
     },
     // --- Private methods ---
@@ -14726,7 +14973,7 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       try {
         eventOnOff(on, document.body, 'mouseup', this.onMouseup, false);
         eventOnOff(on, document.body, 'touchend', this.onMouseup, false);
-      } catch (_unused3) {}
+      } catch (_unused) {}
     },
     resetTimers: function resetTimers() {
       clearTimeout(this.$_autoDelayTimer);
@@ -14742,17 +14989,16 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     var _this2 = this,
         _class;
 
-    var spinId = this.safeId();
-    var value = this.localValue;
-    var isVertical = this.vertical;
-    var isInline = this.inline && !isVertical;
-    var isDisabled = this.disabled;
-    var isReadonly = this.readonly && !isDisabled;
-    var isRequired = this.required && !isReadonly && !isDisabled;
-    var state = this.state;
-    var size = this.size;
+    var spinId = this.spinId,
+        value = this.localValue,
+        inline = this.computedInline,
+        readonly = this.computedReadonly,
+        vertical = this.vertical,
+        disabled = this.disabled,
+        state = this.state,
+        size = this.size,
+        computedFormatter = this.computedFormatter;
     var hasValue = !isNull(value);
-    var formatter = isFunction(this.formatterFn) ? this.formatterFn : this.defaultFormatter;
 
     var makeButton = function makeButton(stepper, label, IconCmp, keyRef, shortcut, btnDisabled, slotName) {
       var $icon = h(IconCmp, {
@@ -14768,15 +15014,13 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       };
 
       var handler = function handler(evt) {
-        if (!isDisabled && !isReadonly) {
+        if (!disabled && !readonly) {
           evt.preventDefault();
 
-          _this2.setMouseup(true);
+          _this2.setMouseup(true); // Since we `preventDefault()`, we must manually focus the button
 
-          try {
-            // Since we `preventDefault()`, we must manually focus the button
-            evt.currentTarget.focus();
-          } catch (_unused4) {}
+
+          attemptFocus(evt.currentTarget);
 
           _this2.handleStepRepeat(evt, stepper);
         }
@@ -14787,13 +15031,13 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
         ref: keyRef,
         staticClass: 'btn btn-sm border-0 rounded-0',
         class: {
-          'py-0': !isVertical
+          'py-0': !vertical
         },
         attrs: {
           tabindex: '-1',
           type: 'button',
-          disabled: isDisabled || isReadonly || btnDisabled,
-          'aria-disabled': isDisabled || isReadonly || btnDisabled ? 'true' : null,
+          disabled: disabled || readonly || btnDisabled,
+          'aria-disabled': disabled || readonly || btnDisabled ? 'true' : null,
           'aria-controls': spinId,
           'aria-label': label || null,
           'aria-keyshortcuts': shortcut || null
@@ -14810,7 +15054,7 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     var $decrement = makeButton(this.stepDown, this.labelDecrement, BIconDash, 'dec', 'ArrowDown', false, 'decrement');
     var $hidden = h();
 
-    if (this.name && !isDisabled) {
+    if (this.name && !disabled) {
       $hidden = h('input', {
         key: 'hidden',
         attrs: {
@@ -14829,48 +15073,24 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       key: 'output',
       staticClass: 'flex-grow-1',
       class: {
-        'd-flex': isVertical,
-        'align-self-center': !isVertical,
-        'align-items-center': isVertical,
-        'border-top': isVertical,
-        'border-bottom': isVertical,
-        'border-left': !isVertical,
-        'border-right': !isVertical
+        'd-flex': vertical,
+        'align-self-center': !vertical,
+        'align-items-center': vertical,
+        'border-top': vertical,
+        'border-bottom': vertical,
+        'border-left': !vertical,
+        'border-right': !vertical
       },
-      attrs: _objectSpread2(_objectSpread2({
-        dir: this.computedRTL ? 'rtl' : 'ltr'
-      }, this.$attrs), {}, {
-        id: spinId,
-        role: 'spinbutton',
-        tabindex: isDisabled ? null : '0',
-        'aria-live': 'off',
-        'aria-label': this.ariaLabel || null,
-        'aria-controls': this.ariaControls || null,
-        // TODO: May want to check if the value is in range
-        'aria-invalid': state === false || !hasValue && isRequired ? 'true' : null,
-        'aria-required': isRequired ? 'true' : null,
-        // These attrs are required for role spinbutton
-        'aria-valuemin': toString$1(this.computedMin),
-        'aria-valuemax': toString$1(this.computedMax),
-        // These should be `null` if the value is out of range
-        // They must also be non-existent attrs if the value is out of range or `null`
-        'aria-valuenow': hasValue ? value : null,
-        'aria-valuetext': hasValue ? formatter(value) : null
-      })
-    }, [h('bdi', hasValue ? formatter(value) : this.placeholder || '')]);
+      attrs: this.computedSpinAttrs
+    }, [h('bdi', hasValue ? computedFormatter(value) : this.placeholder || '')]);
     return h('div', {
       staticClass: 'b-form-spinbutton form-control',
       class: (_class = {
-        disabled: isDisabled,
-        readonly: isReadonly,
+        disabled: disabled,
+        readonly: readonly,
         focus: this.hasFocus
-      }, _defineProperty(_class, "form-control-".concat(size), !!size), _defineProperty(_class, 'd-inline-flex', isInline || isVertical), _defineProperty(_class, 'd-flex', !isInline && !isVertical), _defineProperty(_class, 'align-items-stretch', !isVertical), _defineProperty(_class, 'flex-column', isVertical), _defineProperty(_class, 'is-valid', state === true), _defineProperty(_class, 'is-invalid', state === false), _class),
-      attrs: {
-        role: 'group',
-        lang: this.computedLocale,
-        tabindex: isDisabled ? null : '-1',
-        title: this.ariaLabel
-      },
+      }, _defineProperty(_class, "form-control-".concat(size), !!size), _defineProperty(_class, 'd-inline-flex', inline || vertical), _defineProperty(_class, 'd-flex', !inline && !vertical), _defineProperty(_class, 'align-items-stretch', !vertical), _defineProperty(_class, 'flex-column', vertical), _defineProperty(_class, 'is-valid', state === true), _defineProperty(_class, 'is-invalid', state === false), _class),
+      attrs: this.computedAttrs,
       on: {
         keydown: this.onKeydown,
         keyup: this.onKeyup,
@@ -14878,7 +15098,7 @@ var BFormSpinbutton = /*#__PURE__*/Vue.extend({
         '!focus': this.onFocusBlur,
         '!blur': this.onFocusBlur
       }
-    }, isVertical ? [$increment, $hidden, $spin, $decrement] : [$decrement, $hidden, $spin, $increment]);
+    }, vertical ? [$increment, $hidden, $spin, $decrement] : [$decrement, $hidden, $spin, $increment]);
   }
 });
 
@@ -14889,15 +15109,15 @@ var FormSpinbuttonPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$l = 'BFormTag';
+var NAME$m = 'BFormTag';
 var BFormTag = /*#__PURE__*/Vue.extend({
-  name: NAME$l,
+  name: NAME$m,
   mixins: [idMixin, normalizeSlotMixin],
   props: {
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$l, 'variant');
+        return getComponentConfig(NAME$m, 'variant');
       }
     },
     disabled: {
@@ -14915,7 +15135,7 @@ var BFormTag = /*#__PURE__*/Vue.extend({
     removeLabel: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$l, 'removeLabel');
+        return getComponentConfig(NAME$m, 'removeLabel');
       }
     },
     tag: {
@@ -14981,13 +15201,13 @@ var BFormTag = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$m = 'BFormTags'; // Supported input types (for built in input)
+var NAME$n = 'BFormTags'; // Supported input types (for built in input)
 
 var TYPES$1 = ['text', 'email', 'tel', 'url', 'number']; // Pre-compiled regular expressions for performance reasons
 
 var RX_SPACES = /[\s\uFEFF\xA0]+/g; // KeyCode constants
 
-var ENTER$1 = KEY_CODES.ENTER,
+var ENTER$2 = KEY_CODES.ENTER,
     BACKSPACE = KEY_CODES.BACKSPACE,
     DELETE = KEY_CODES.DELETE; // --- Utility methods ---
 // Escape special chars in string and replace
@@ -15023,7 +15243,7 @@ var cleanTagsState = function cleanTagsState() {
 
 
 var BFormTags = /*#__PURE__*/Vue.extend({
-  name: NAME$m,
+  name: NAME$n,
   mixins: [idMixin, normalizeSlotMixin],
   model: {
     // Even though this is the default that Vue assumes, we need
@@ -15039,7 +15259,7 @@ var BFormTags = /*#__PURE__*/Vue.extend({
     placeholder: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'placeholder');
+        return getComponentConfig(NAME$n, 'placeholder');
       }
     },
     disabled: {
@@ -15088,19 +15308,19 @@ var BFormTags = /*#__PURE__*/Vue.extend({
     addButtonText: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'addButtonText');
+        return getComponentConfig(NAME$n, 'addButtonText');
       }
     },
     addButtonVariant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'addButtonVariant');
+        return getComponentConfig(NAME$n, 'addButtonVariant');
       }
     },
     tagVariant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'tagVariant');
+        return getComponentConfig(NAME$n, 'tagVariant');
       }
     },
     tagClass: {
@@ -15114,13 +15334,13 @@ var BFormTags = /*#__PURE__*/Vue.extend({
     tagRemoveLabel: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'tagRemoveLabel');
+        return getComponentConfig(NAME$n, 'tagRemoveLabel');
       }
     },
     tagRemovedLabel: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'tagRemovedLabel');
+        return getComponentConfig(NAME$n, 'tagRemovedLabel');
       }
     },
     tagValidator: {
@@ -15130,13 +15350,13 @@ var BFormTags = /*#__PURE__*/Vue.extend({
     duplicateTagText: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'duplicateTagText');
+        return getComponentConfig(NAME$n, 'duplicateTagText');
       }
     },
     invalidTagText: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$m, 'invalidTagText');
+        return getComponentConfig(NAME$n, 'invalidTagText');
       }
     },
     separator: {
@@ -15410,7 +15630,7 @@ var BFormTags = /*#__PURE__*/Vue.extend({
       var value = evt.target.value || '';
       /* istanbul ignore else: testing to be added later */
 
-      if (!this.noAddOnEnter && keyCode === ENTER$1) {
+      if (!this.noAddOnEnter && keyCode === ENTER$2) {
         // Attempt to add the tag when user presses enter
         evt.preventDefault();
         this.addTag();
@@ -15450,15 +15670,13 @@ var BFormTags = /*#__PURE__*/Vue.extend({
     // --- Public methods ---
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.getInput().focus();
-        } catch (_unused) {}
+        attemptFocus(this.getInput());
       }
     },
     blur: function blur() {
-      try {
-        this.getInput().blur();
-      } catch (_unused2) {}
+      if (!this.disabled) {
+        attemptBlur(this.getInput());
+      }
     },
     // --- Private methods ---
     splitTags: function splitTags(newTag) {
@@ -15808,7 +16026,8 @@ var BFormTextarea = /*#__PURE__*/Vue.extend({
   directives: {
     'b-visible': VBVisible
   },
-  mixins: [idMixin, listenOnRootMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
+  // Mixin order is important!
+  mixins: [listenersMixin, idMixin, listenOnRootMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
   props: {
     rows: {
       type: [Number, String],
@@ -15871,6 +16090,31 @@ var BFormTextarea = /*#__PURE__*/Vue.extend({
       // This is used to set the attribute 'rows' on the textarea
       // If auto-height is enabled, then we return `null` as we use CSS to control height
       return this.computedMinRows === this.computedMaxRows ? this.computedMinRows : null;
+    },
+    computedAttrs: function computedAttrs() {
+      var disabled = this.disabled,
+          required = this.required;
+      return {
+        id: this.safeId(),
+        name: this.name || null,
+        form: this.form || null,
+        disabled: disabled,
+        placeholder: this.placeholder || null,
+        required: required,
+        autocomplete: this.autocomplete || null,
+        readonly: this.readonly || this.plaintext,
+        rows: this.computedRows,
+        wrap: this.wrap || null,
+        'aria-required': this.required ? 'true' : null,
+        'aria-invalid': this.computedAriaInvalid
+      };
+    },
+    computedListeners: function computedListeners() {
+      return _objectSpread2(_objectSpread2({}, this.bvListeners), {}, {
+        input: this.onInput,
+        change: this.onChange,
+        blur: this.onBlur
+      });
     }
   },
   watch: {
@@ -15951,16 +16195,11 @@ var BFormTextarea = /*#__PURE__*/Vue.extend({
     }
   },
   render: function render(h) {
-    // Using self instead of this helps reduce code size during minification
-    var self = this;
     return h('textarea', {
       ref: 'input',
-      class: self.computedClass,
-      style: self.computedStyle,
+      class: this.computedClass,
+      style: this.computedStyle,
       directives: [{
-        name: 'model',
-        value: self.localValue
-      }, {
         name: 'b-visible',
         value: this.visibleCallback,
         // If textarea is within 640px of viewport, consider it visible
@@ -15968,28 +16207,11 @@ var BFormTextarea = /*#__PURE__*/Vue.extend({
           '640': true
         }
       }],
-      attrs: {
-        id: self.safeId(),
-        name: self.name || null,
-        form: self.form || null,
-        disabled: self.disabled,
-        placeholder: self.placeholder || null,
-        required: self.required,
-        autocomplete: self.autocomplete || null,
-        readonly: self.readonly || self.plaintext,
-        rows: self.computedRows,
-        wrap: self.wrap || null,
-        'aria-required': self.required ? 'true' : null,
-        'aria-invalid': self.computedAriaInvalid
-      },
+      attrs: this.computedAttrs,
       domProps: {
-        value: self.localValue
+        value: this.localValue
       },
-      on: _objectSpread2(_objectSpread2({}, self.$listeners), {}, {
-        input: self.onInput,
-        change: self.onChange,
-        blur: self.onBlur
-      })
+      on: this.computedListeners
     });
   }
 });
@@ -16001,7 +16223,7 @@ var FormTextareaPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$n = 'BTime';
+var NAME$o = 'BTime';
 var NUMERIC = 'numeric';
 var LEFT$2 = KEY_CODES.LEFT,
     RIGHT$2 = KEY_CODES.RIGHT; // Time string RegExpr (optional seconds)
@@ -16010,7 +16232,7 @@ var RE_TIME = /^([0-1]?[0-9]|2[0-3]):[0-5]?[0-9](:[0-5]?[0-9])?$/; // --- Helper
 // Fallback to BFormSpinbutton prop if no value found
 
 var getConfigFallback$1 = function getConfigFallback(prop) {
-  return getComponentConfig(NAME$n, prop) || getComponentConfig('BFormSpinbutton', prop);
+  return getComponentConfig(NAME$o, prop) || getComponentConfig('BFormSpinbutton', prop);
 };
 
 var padLeftZeros = function padLeftZeros(num) {
@@ -16060,7 +16282,7 @@ var formatHMS = function formatHMS(_ref) {
 
 
 var BTime = /*#__PURE__*/Vue.extend({
-  name: NAME$n,
+  name: NAME$o,
   mixins: [idMixin, normalizeSlotMixin],
   model: {
     prop: 'value',
@@ -16115,49 +16337,49 @@ var BTime = /*#__PURE__*/Vue.extend({
     labelNoTimeSelected: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelNoTimeSelected');
+        return getComponentConfig(NAME$o, 'labelNoTimeSelected');
       }
     },
     labelSelected: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelSelected');
+        return getComponentConfig(NAME$o, 'labelSelected');
       }
     },
     labelHours: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelHours');
+        return getComponentConfig(NAME$o, 'labelHours');
       }
     },
     labelMinutes: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelMinutes');
+        return getComponentConfig(NAME$o, 'labelMinutes');
       }
     },
     labelSeconds: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelSeconds');
+        return getComponentConfig(NAME$o, 'labelSeconds');
       }
     },
     labelAmpm: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelAmpm');
+        return getComponentConfig(NAME$o, 'labelAmpm');
       }
     },
     labelAm: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelAm');
+        return getComponentConfig(NAME$o, 'labelAm');
       }
     },
     labelPm: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$n, 'labelPm');
+        return getComponentConfig(NAME$o, 'labelPm');
       }
     },
     // Passed to the spin buttons
@@ -16418,19 +16640,17 @@ var BTime = /*#__PURE__*/Vue.extend({
     // Public methods
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          // We focus the first spin button
-          this.$refs.spinners[0].focus();
-        } catch (_unused) {}
+        // We focus the first spin button
+        attemptFocus(this.$refs.spinners[0]);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          if (contains(this.$el, document.activeElement)) {
-            document.activeElement.blur();
-          }
-        } catch (_unused2) {}
+        var activeElement = getActiveElement();
+
+        if (contains(this.$el, activeElement)) {
+          attemptBlur(activeElement);
+        }
       }
     },
     // Formatters for the spin buttons
@@ -16484,10 +16704,7 @@ var BTime = /*#__PURE__*/Vue.extend({
         }).indexOf(true);
         index = index + (keyCode === LEFT$2 ? -1 : 1);
         index = index >= spinners.length ? 0 : index < 0 ? spinners.length - 1 : index;
-
-        try {
-          spinners[index].focus();
-        } catch (_unused3) {}
+        attemptFocus(spinners[index]);
       }
     },
     setLive: function setLive(on) {
@@ -16690,10 +16907,10 @@ var BTime = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$o = 'BFormTimepicker'; // Fallback to BTime/BFormSpinbutton prop if no value found
+var NAME$p = 'BFormTimepicker'; // Fallback to BTime/BFormSpinbutton prop if no value found
 
 var getConfigFallback$2 = function getConfigFallback(prop) {
-  return getComponentConfig(NAME$o, prop) || getComponentConfig('BTime', prop) || getComponentConfig('BFormSpinbutton', prop);
+  return getComponentConfig(NAME$p, prop) || getComponentConfig('BTime', prop) || getComponentConfig('BFormSpinbutton', prop);
 }; // We create our props as a mixin so that we can control
 // where they appear in the props listing reference section
 
@@ -16784,7 +17001,7 @@ var propsMixin$1 = {
     labelNowButton: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$o, 'labelNowButton');
+        return getComponentConfig(NAME$p, 'labelNowButton');
       }
     },
     nowButtonVariant: {
@@ -16798,7 +17015,7 @@ var propsMixin$1 = {
     labelResetButton: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$o, 'labelResetButton');
+        return getComponentConfig(NAME$p, 'labelResetButton');
       }
     },
     resetButtonVariant: {
@@ -16812,7 +17029,7 @@ var propsMixin$1 = {
     labelCloseButton: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$o, 'labelCloseButton');
+        return getComponentConfig(NAME$p, 'labelCloseButton');
       }
     },
     closeButtonVariant: {
@@ -16892,7 +17109,7 @@ var propsMixin$1 = {
 // @vue/component
 
 var BFormTimepicker = /*#__PURE__*/Vue.extend({
-  name: NAME$o,
+  name: NAME$p,
   // The mixins order determines the order of appearance in the props reference section
   mixins: [idMixin, propsMixin$1],
   model: {
@@ -16962,16 +17179,12 @@ var BFormTimepicker = /*#__PURE__*/Vue.extend({
     // Public methods
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.control);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$refs.control);
       }
     },
     // Private methods
@@ -17023,9 +17236,7 @@ var BFormTimepicker = /*#__PURE__*/Vue.extend({
       var _this2 = this;
 
       this.$nextTick(function () {
-        try {
-          _this2.$refs.time.focus();
-        } catch (_unused3) {}
+        attemptFocus(_this2.$refs.time);
 
         _this2.$emit('shown');
       });
@@ -17260,7 +17471,7 @@ var BInputGroupAppend = /*#__PURE__*/Vue.extend({
     var props = _ref.props,
         data = _ref.data,
         children = _ref.children;
-    // pass all our props/attrs down to child, and set`append` to true
+    // Pass all our data down to child, and set `append` to `true`
     return h(BInputGroupAddon, vueFunctionalDataMerge.mergeData(data, {
       props: _objectSpread2(_objectSpread2({}, props), {}, {
         append: true
@@ -17269,7 +17480,7 @@ var BInputGroupAppend = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$p = 'BInputGroup';
+var NAME$q = 'BInputGroup';
 var props$A = {
   id: {
     type: String
@@ -17277,7 +17488,7 @@ var props$A = {
   size: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$p, 'size');
+      return getComponentConfig(NAME$q, 'size');
     }
   },
   prepend: {
@@ -17299,7 +17510,7 @@ var props$A = {
 }; // @vue/component
 
 var BInputGroup = /*#__PURE__*/Vue.extend({
-  name: NAME$p,
+  name: NAME$q,
   functional: true,
   props: props$A,
   render: function render(h, _ref) {
@@ -17389,7 +17600,7 @@ var BContainer = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$q = 'BJumbotron';
+var NAME$r = 'BJumbotron';
 var props$C = {
   fluid: {
     type: Boolean,
@@ -17434,25 +17645,25 @@ var props$C = {
   bgVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$q, 'bgVariant');
+      return getComponentConfig(NAME$r, 'bgVariant');
     }
   },
   borderVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$q, 'borderVariant');
+      return getComponentConfig(NAME$r, 'borderVariant');
     }
   },
   textVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$q, 'textVariant');
+      return getComponentConfig(NAME$r, 'textVariant');
     }
   }
 }; // @vue/component
 
 var BJumbotron = /*#__PURE__*/Vue.extend({
-  name: NAME$q,
+  name: NAME$r,
   functional: true,
   props: props$C,
   render: function render(h, _ref) {
@@ -17673,7 +17884,7 @@ var BListGroup = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$r = 'BListGroupItem';
+var NAME$s = 'BListGroupItem';
 var actionTags = ['a', 'router-link', 'button', 'b-link'];
 var linkProps$3 = propsFactory();
 delete linkProps$3.href.default;
@@ -17694,13 +17905,13 @@ var props$E = _objectSpread2({
   variant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$r, 'variant');
+      return getComponentConfig(NAME$s, 'variant');
     }
   }
 }, linkProps$3); // @vue/component
 
 var BListGroupItem = /*#__PURE__*/Vue.extend({
-  name: NAME$r,
+  name: NAME$s,
   functional: true,
   props: props$E,
   render: function render(h, _ref) {
@@ -18423,7 +18634,7 @@ var BvModalEvent = /*#__PURE__*/function (_BvEvent) {
   return BvModalEvent;
 }(BvEvent); // Named exports
 
-var NAME$s = 'BModal'; // ObserveDom config to detect changes in modal content
+var NAME$t = 'BModal'; // ObserveDom config to detect changes in modal content
 // so that we can adjust the modal padding if needed
 
 var OBSERVER_CONFIG = {
@@ -18432,26 +18643,13 @@ var OBSERVER_CONFIG = {
   characterData: true,
   attributes: true,
   attributeFilter: ['style', 'class']
-}; // --- Utility methods ---
-// Attempt to focus an element, and return true if successful
-
-var attemptFocus = function attemptFocus(el) {
-  if (el && isVisible(el) && el.focus) {
-    try {
-      el.focus();
-    } catch (_unused) {}
-  } // If the element has focus, then return true
-
-
-  return document.activeElement === el;
 }; // --- Props ---
-
 
 var props$I = {
   size: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'size');
+      return getComponentConfig(NAME$t, 'size');
     }
   },
   centered: {
@@ -18500,7 +18698,7 @@ var props$I = {
   titleTag: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'titleTag');
+      return getComponentConfig(NAME$t, 'titleTag');
     }
   },
   titleClass: {
@@ -18518,25 +18716,25 @@ var props$I = {
   headerBgVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'headerBgVariant');
+      return getComponentConfig(NAME$t, 'headerBgVariant');
     }
   },
   headerBorderVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'headerBorderVariant');
+      return getComponentConfig(NAME$t, 'headerBorderVariant');
     }
   },
   headerTextVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'headerTextVariant');
+      return getComponentConfig(NAME$t, 'headerTextVariant');
     }
   },
   headerCloseVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'headerCloseVariant');
+      return getComponentConfig(NAME$t, 'headerCloseVariant');
     }
   },
   headerClass: {
@@ -18546,13 +18744,13 @@ var props$I = {
   bodyBgVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'bodyBgVariant');
+      return getComponentConfig(NAME$t, 'bodyBgVariant');
     }
   },
   bodyTextVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'bodyTextVariant');
+      return getComponentConfig(NAME$t, 'bodyTextVariant');
     }
   },
   modalClass: {
@@ -18574,19 +18772,19 @@ var props$I = {
   footerBgVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'footerBgVariant');
+      return getComponentConfig(NAME$t, 'footerBgVariant');
     }
   },
   footerBorderVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'footerBorderVariant');
+      return getComponentConfig(NAME$t, 'footerBorderVariant');
     }
   },
   footerTextVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'footerTextVariant');
+      return getComponentConfig(NAME$t, 'footerTextVariant');
     }
   },
   footerClass: {
@@ -18637,19 +18835,19 @@ var props$I = {
   headerCloseContent: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'headerCloseContent');
+      return getComponentConfig(NAME$t, 'headerCloseContent');
     }
   },
   headerCloseLabel: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'headerCloseLabel');
+      return getComponentConfig(NAME$t, 'headerCloseLabel');
     }
   },
   cancelTitle: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'cancelTitle');
+      return getComponentConfig(NAME$t, 'cancelTitle');
     }
   },
   cancelTitleHtml: {
@@ -18658,7 +18856,7 @@ var props$I = {
   okTitle: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'okTitle');
+      return getComponentConfig(NAME$t, 'okTitle');
     }
   },
   okTitleHtml: {
@@ -18667,13 +18865,13 @@ var props$I = {
   cancelVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'cancelVariant');
+      return getComponentConfig(NAME$t, 'cancelVariant');
     }
   },
   okVariant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$s, 'okVariant');
+      return getComponentConfig(NAME$t, 'okVariant');
     }
   },
   lazy: {
@@ -18701,8 +18899,8 @@ var props$I = {
 }; // @vue/component
 
 var BModal = /*#__PURE__*/Vue.extend({
-  name: NAME$s,
-  mixins: [idMixin, listenOnDocumentMixin, listenOnRootMixin, listenOnWindowMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
+  name: NAME$t,
+  mixins: [attrsMixin, idMixin, listenOnDocumentMixin, listenOnRootMixin, listenOnWindowMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
   inheritAttrs: false,
   model: {
     prop: 'visible',
@@ -18737,6 +18935,30 @@ var BModal = /*#__PURE__*/Vue.extend({
     };
   },
   computed: {
+    modalId: function modalId() {
+      return this.safeId();
+    },
+    modalOuterId: function modalOuterId() {
+      return this.safeId('__BV_modal_outer_');
+    },
+    modalHeaderId: function modalHeaderId() {
+      return this.safeId('__BV_modal_header_');
+    },
+    modalBodyId: function modalBodyId() {
+      return this.safeId('__BV_modal_body_');
+    },
+    modalTitleId: function modalTitleId() {
+      return this.safeId('__BV_modal_title_');
+    },
+    modalContentId: function modalContentId() {
+      return this.safeId('__BV_modal_content_');
+    },
+    modalFooterId: function modalFooterId() {
+      return this.safeId('__BV_modal_footer_');
+    },
+    modalBackdropId: function modalBackdropId() {
+      return this.safeId('__BV_modal_backdrop_');
+    },
     modalClasses: function modalClasses() {
       return [{
         fade: !this.noFade,
@@ -18797,6 +19019,28 @@ var BModal = /*#__PURE__*/Vue.extend({
     computeIgnoreEnforceFocusSelector: function computeIgnoreEnforceFocusSelector() {
       // Normalize to an single selector with selectors separated by `,`
       return concat(this.ignoreEnforceFocusSelector).filter(identity).join(',').trim();
+    },
+    computedAttrs: function computedAttrs() {
+      // If the parent has a scoped style attribute, and the modal
+      // is portalled, add the scoped attribute to the modal wrapper
+      var scopedStyleAttrs = !this.static ? this.scopedStyleAttrs : {};
+      return _objectSpread2(_objectSpread2(_objectSpread2({}, scopedStyleAttrs), this.bvAttrs), {}, {
+        id: this.modalOuterId
+      });
+    },
+    computedModalAttrs: function computedModalAttrs() {
+      var isVisible = this.isVisible,
+          ariaLabel = this.ariaLabel;
+      return {
+        id: this.modalId,
+        role: 'dialog',
+        'aria-hidden': isVisible ? null : 'true',
+        'aria-modal': isVisible ? 'true' : null,
+        'aria-label': ariaLabel,
+        'aria-labelledby': this.hideHeader || ariaLabel || // TODO: Rename slot to `title` and deprecate `modal-title`
+        !(this.hasNormalizedSlot('modal-title') || this.titleHtml || this.title) ? null : this.modalTitleId,
+        'aria-describedby': this.modalBodyId
+      };
     }
   },
   watch: {
@@ -18859,7 +19103,7 @@ var BModal = /*#__PURE__*/Vue.extend({
       }, options), {}, {
         // Options that can't be overridden
         vueTarget: this,
-        componentId: this.safeId()
+        componentId: this.modalId
       }));
     },
     // Public method to show modal
@@ -18958,24 +19202,19 @@ var BModal = /*#__PURE__*/Vue.extend({
       }
     },
     // Private method to get the current document active element
-    getActiveElement: function getActiveElement() {
-      if (isBrowser) {
-        var activeElement = document.activeElement; // Note: On IE 11, `document.activeElement` may be null.
-        // So we test it for truthiness first.
-        // https://github.com/bootstrap-vue/bootstrap-vue/issues/3206
-        // Returning focus to document.body may cause unwanted scrolls, so we
-        // exclude setting focus on body
+    getActiveElement: function getActiveElement$1() {
+      // Returning focus to `document.body` may cause unwanted scrolls,
+      // so we exclude setting focus on body
+      var activeElement = getActiveElement(isBrowser ? [document.body] : []); // Preset the fallback return focus value if it is not set
+      // `document.activeElement` should be the trigger element that was clicked or
+      // in the case of using the v-model, which ever element has current focus
+      // Will be overridden by some commands such as toggle, etc.
+      // Note: On IE 11, `document.activeElement` may be `null`
+      // So we test it for truthiness first
+      // https://github.com/bootstrap-vue/bootstrap-vue/issues/3206
 
-        if (activeElement && activeElement !== document.body && activeElement.focus) {
-          // Preset the fallback return focus value if it is not set
-          // `document.activeElement` should be the trigger element that was clicked or
-          // in the case of using the v-model, which ever element has current focus
-          // Will be overridden by some commands such as toggle, etc.
-          return activeElement;
-        }
-      }
 
-      return null;
+      return activeElement && activeElement.focus ? activeElement : null;
     },
     // Private method to finish showing modal
     doShow: function doShow() {
@@ -19164,7 +19403,7 @@ var BModal = /*#__PURE__*/Vue.extend({
       } // Otherwise focus the modal content container
 
 
-      content.focus({
+      attemptFocus(content, {
         preventScroll: true
       });
     },
@@ -19179,18 +19418,18 @@ var BModal = /*#__PURE__*/Vue.extend({
     },
     // Root listener handlers
     showHandler: function showHandler(id, triggerEl) {
-      if (id === this.safeId()) {
+      if (id === this.modalId) {
         this.return_focus = triggerEl || this.getActiveElement();
         this.show();
       }
     },
     hideHandler: function hideHandler(id) {
-      if (id === this.safeId()) {
+      if (id === this.modalId) {
         this.hide('event');
       }
     },
     toggleHandler: function toggleHandler(id, triggerEl) {
-      if (id === this.safeId()) {
+      if (id === this.modalId) {
         this.toggle(triggerEl);
       }
     },
@@ -19292,7 +19531,7 @@ var BModal = /*#__PURE__*/Vue.extend({
             staticClass: 'modal-title',
             class: this.titleClasses,
             attrs: {
-              id: this.safeId('__BV_modal_title_')
+              id: this.modalTitleId
             },
             domProps: domProps
           }, // TODO: Rename slot to `title` and deprecate `modal-title`
@@ -19304,7 +19543,7 @@ var BModal = /*#__PURE__*/Vue.extend({
           staticClass: 'modal-header',
           class: this.headerClasses,
           attrs: {
-            id: this.safeId('__BV_modal_header_')
+            id: this.modalHeaderId
           }
         }, [modalHeader]);
       } // Modal body
@@ -19315,7 +19554,7 @@ var BModal = /*#__PURE__*/Vue.extend({
         staticClass: 'modal-body',
         class: this.bodyClasses,
         attrs: {
-          id: this.safeId('__BV_modal_body_')
+          id: this.modalBodyId
         }
       }, this.normalizeSlot('default', this.slotScope)); // Modal footer
 
@@ -19373,7 +19612,7 @@ var BModal = /*#__PURE__*/Vue.extend({
           staticClass: 'modal-footer',
           class: this.footerClasses,
           attrs: {
-            id: this.safeId('__BV_modal_footer_')
+            id: this.modalFooterId
           }
         }, [modalFooter]);
       } // Assemble modal content
@@ -19384,8 +19623,7 @@ var BModal = /*#__PURE__*/Vue.extend({
         staticClass: 'modal-content',
         class: this.contentClass,
         attrs: {
-          role: 'document',
-          id: this.safeId('__BV_modal_content_'),
+          id: this.modalContentId,
           tabindex: '-1'
         }
       }, [header, body, footer]); // Tab trap to prevent page from scrolling to next element in
@@ -19430,16 +19668,7 @@ var BModal = /*#__PURE__*/Vue.extend({
           value: this.isVisible,
           expression: 'isVisible'
         }],
-        attrs: {
-          id: this.safeId(),
-          role: 'dialog',
-          'aria-hidden': this.isVisible ? null : 'true',
-          'aria-modal': this.isVisible ? 'true' : null,
-          'aria-label': this.ariaLabel,
-          'aria-labelledby': this.hideHeader || this.ariaLabel || // TODO: Rename slot to `title` and deprecate `modal-title`
-          !(this.hasNormalizedSlot('modal-title') || this.titleHtml || this.title) ? null : this.safeId('__BV_modal_title_'),
-          'aria-describedby': this.safeId('__BV_modal_body_')
-        },
+        attrs: this.computedModalAttrs,
         on: {
           keydown: this.onEsc,
           click: this.onClickOut
@@ -19474,7 +19703,7 @@ var BModal = /*#__PURE__*/Vue.extend({
         backdrop = h('div', {
           staticClass: 'modal-backdrop',
           attrs: {
-            id: this.safeId('__BV_modal_backdrop_')
+            id: this.modalBackdropId
           }
         }, // TODO: Rename slot to `backdrop` and deprecate `modal-backdrop`
         [this.normalizeSlot('modal-backdrop')]);
@@ -19484,17 +19713,12 @@ var BModal = /*#__PURE__*/Vue.extend({
         props: {
           noFade: this.noFade
         }
-      }, [backdrop]); // If the parent has a scoped style attribute, and the modal
-      // is portalled, add the scoped attribute to the modal wrapper
-
-      var scopedStyleAttrs = !this.static ? this.scopedStyleAttrs : {}; // Assemble modal and backdrop in an outer <div>
+      }, [backdrop]); // Assemble modal and backdrop in an outer <div>
 
       return h('div', {
         key: "modal-outer-".concat(this._uid),
         style: this.modalOuterStyle,
-        attrs: _objectSpread2(_objectSpread2(_objectSpread2({}, scopedStyleAttrs), this.$attrs), {}, {
-          id: this.safeId('__BV_modal_outer_')
-        })
+        attrs: this.computedAttrs
       }, [modal, backdrop]);
     }
   },
@@ -19882,9 +20106,8 @@ var plugin = function plugin(Vue) {
     }
   }); // Define our read-only `$bvModal` instance property
   // Placed in an if just in case in HMR mode
-  // eslint-disable-next-line no-prototype-builtins
 
-  if (!Vue.prototype.hasOwnProperty(PROP_NAME$2)) {
+  if (!hasOwnProperty(Vue.prototype, PROP_NAME$2)) {
     defineProperty(Vue.prototype, PROP_NAME$2, {
       get: function get() {
         /* istanbul ignore next */
@@ -20074,13 +20297,17 @@ var BNavForm = /*#__PURE__*/Vue.extend({
   }
 });
 
-var props$N = pluckProps(['text', 'html', 'menuClass', 'toggleClass', 'noCaret', 'role', 'lazy'], props$k); // @vue/component
+var props$N = pluckProps(['text', 'html', 'menuClass', 'toggleClass', 'noCaret', 'role', 'lazy'], props$k); // --- Main component ---
+// @vue/component
 
 var BNavItemDropdown = /*#__PURE__*/Vue.extend({
   name: 'BNavItemDropdown',
   mixins: [idMixin, dropdownMixin, normalizeSlotMixin],
   props: props$N,
   computed: {
+    toggleId: function toggleId() {
+      return this.safeId('_BV_toggle_');
+    },
     isNav: function isNav() {
       // Signal to dropdown mixin that we are in a navbar
       return true;
@@ -20103,41 +20330,45 @@ var BNavItemDropdown = /*#__PURE__*/Vue.extend({
     }
   },
   render: function render(h) {
-    var button = h(BLink, {
-      ref: 'toggle',
+    var toggleId = this.toggleId,
+        visible = this.visible;
+    var $toggle = h(BLink, {
       staticClass: 'nav-link dropdown-toggle',
       class: this.toggleClasses,
       props: {
-        href: '#',
+        href: "#".concat(this.id || ''),
         disabled: this.disabled
       },
       attrs: {
-        id: this.safeId('_BV_button_'),
+        id: toggleId,
+        role: 'button',
         'aria-haspopup': 'true',
-        'aria-expanded': this.visible ? 'true' : 'false'
+        'aria-expanded': visible ? 'true' : 'false'
       },
       on: {
         mousedown: this.onMousedown,
         click: this.toggle,
         keydown: this.toggle // Handle ENTER, SPACE and DOWN
 
-      }
-    }, [this.$slots['button-content'] || this.$slots.text || h('span', {
+      },
+      ref: 'toggle'
+    }, [// TODO: The `text` slot is deprecated in favor of the `button-content` slot
+    this.normalizeSlot(['button-content', 'text']) || h('span', {
       domProps: htmlOrText(this.html, this.text)
     })]);
-    var menu = h('ul', {
+    var $menu = h('ul', {
       staticClass: 'dropdown-menu',
       class: this.menuClasses,
-      ref: 'menu',
       attrs: {
         tabindex: '-1',
-        'aria-labelledby': this.safeId('_BV_button_')
+        'aria-labelledby': toggleId
       },
       on: {
         keydown: this.onKeydown // Handle UP, DOWN and ESC
 
-      }
-    }, !this.lazy || this.visible ? this.normalizeSlot('default', {
+      },
+      ref: 'menu'
+    }, !this.lazy || visible ? this.normalizeSlot('default', {
       hide: this.hide
     }) : [h()]);
     return h('li', {
@@ -20146,7 +20377,7 @@ var BNavItemDropdown = /*#__PURE__*/Vue.extend({
       attrs: {
         id: this.safeId()
       }
-    }, [button, menu]);
+    }, [$toggle, $menu]);
   }
 });
 
@@ -20166,7 +20397,7 @@ var NavPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$t = 'BNavbar';
+var NAME$u = 'BNavbar';
 var props$O = {
   tag: {
     type: String,
@@ -20179,7 +20410,7 @@ var props$O = {
   variant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$t, 'variant');
+      return getComponentConfig(NAME$u, 'variant');
     }
   },
   toggleable: {
@@ -20200,7 +20431,7 @@ var props$O = {
 }; // @vue/component
 
 var BNavbar = /*#__PURE__*/Vue.extend({
-  name: NAME$t,
+  name: NAME$u,
   mixins: [normalizeSlotMixin],
   props: props$O,
   provide: function provide() {
@@ -20295,24 +20526,21 @@ var BNavbarBrand = /*#__PURE__*/Vue.extend({
   }
 });
 
-//   Switch to using `VBToggle` directive, will reduce code footprint
-//   Although the `click` event will no longer be cancellable
-//   Instead add `disabled` prop, and have `VBToggle` check element
-//   disabled state
-// --- Constants ---
-
-var NAME$u = 'BNavbarToggle';
+var NAME$v = 'BNavbarToggle';
 var CLASS_NAME$2 = 'navbar-toggler'; // --- Main component ---
 // @vue/component
 
 var BNavbarToggle = /*#__PURE__*/Vue.extend({
-  name: NAME$u,
+  name: NAME$v,
+  directives: {
+    BToggle: VBToggle
+  },
   mixins: [listenOnRootMixin, normalizeSlotMixin],
   props: {
     label: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$u, 'label');
+        return getComponentConfig(NAME$v, 'label');
       }
     },
     target: {
@@ -20331,13 +20559,12 @@ var BNavbarToggle = /*#__PURE__*/Vue.extend({
   },
   methods: {
     onClick: function onClick(evt) {
+      // Emit courtesy `click` event
       this.$emit('click', evt);
-
-      if (!evt.defaultPrevented) {
-        this.emitOnRoot(EVENT_TOGGLE, this.target);
-      }
     },
     handleStateEvt: function handleStateEvt(id, state) {
+      // We listen for state events so that we can pass the
+      // boolean expanded state to the default scoped slot
       if (id === this.target) {
         this.toggleState = state;
       }
@@ -20347,11 +20574,13 @@ var BNavbarToggle = /*#__PURE__*/Vue.extend({
     var expanded = this.toggleState;
     return h('button', {
       staticClass: CLASS_NAME$2,
+      directives: [{
+        name: 'BToggle',
+        value: this.target
+      }],
       attrs: {
         type: 'button',
-        'aria-label': this.label,
-        'aria-controls': this.target,
-        'aria-expanded': toString$1(expanded)
+        'aria-label': this.label
       },
       on: {
         click: this.onClick
@@ -20379,10 +20608,10 @@ var NavbarPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$v = 'BSpinner'; // @vue/component
+var NAME$w = 'BSpinner'; // @vue/component
 
 var BSpinner = /*#__PURE__*/Vue.extend({
-  name: NAME$v,
+  name: NAME$w,
   functional: true,
   props: {
     type: {
@@ -20397,7 +20626,7 @@ var BSpinner = /*#__PURE__*/Vue.extend({
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$v, 'variant');
+        return getComponentConfig(NAME$w, 'variant');
       }
     },
     small: {
@@ -21044,9 +21273,6 @@ var paginationMixin = {
         return isVisible(btn);
       });
     },
-    setBtnFocus: function setBtnFocus(btn) {
-      btn.focus();
-    },
     focusCurrent: function focusCurrent() {
       var _this2 = this;
 
@@ -21056,9 +21282,7 @@ var paginationMixin = {
           return toInteger(getAttr(el, 'aria-posinset'), 0) === _this2.computedCurrentPage;
         });
 
-        if (btn && btn.focus) {
-          _this2.setBtnFocus(btn);
-        } else {
+        if (!attemptFocus(btn)) {
           // Fallback if current page is not in button list
           _this2.focusFirst();
         }
@@ -21073,9 +21297,7 @@ var paginationMixin = {
           return !isDisabled(el);
         });
 
-        if (btn && btn.focus && btn !== document.activeElement) {
-          _this3.setBtnFocus(btn);
-        }
+        attemptFocus(btn);
       });
     },
     focusLast: function focusLast() {
@@ -21087,9 +21309,7 @@ var paginationMixin = {
           return !isDisabled(el);
         });
 
-        if (btn && btn.focus && btn !== document.activeElement) {
-          _this4.setBtnFocus(btn);
-        }
+        attemptFocus(btn);
       });
     },
     focusPrev: function focusPrev() {
@@ -21099,10 +21319,10 @@ var paginationMixin = {
       this.$nextTick(function () {
         var buttons = _this5.getButtons();
 
-        var idx = buttons.indexOf(document.activeElement);
+        var index = buttons.indexOf(getActiveElement());
 
-        if (idx > 0 && !isDisabled(buttons[idx - 1]) && buttons[idx - 1].focus) {
-          _this5.setBtnFocus(buttons[idx - 1]);
+        if (index > 0 && !isDisabled(buttons[index - 1])) {
+          attemptFocus(buttons[index - 1]);
         }
       });
     },
@@ -21113,11 +21333,10 @@ var paginationMixin = {
       this.$nextTick(function () {
         var buttons = _this6.getButtons();
 
-        var idx = buttons.indexOf(document.activeElement);
-        var cnt = buttons.length - 1;
+        var index = buttons.indexOf(getActiveElement());
 
-        if (idx < cnt && !isDisabled(buttons[idx + 1]) && buttons[idx + 1].focus) {
-          _this6.setBtnFocus(buttons[idx + 1]);
+        if (index < buttons.length - 1 && !isDisabled(buttons[index + 1])) {
+          attemptFocus(buttons[index + 1]);
         }
       });
     }
@@ -21330,14 +21549,14 @@ var paginationMixin = {
   }
 };
 
-var NAME$w = 'BPagination';
+var NAME$x = 'BPagination';
 var DEFAULT_PER_PAGE = 20;
 var DEFAULT_TOTAL_ROWS = 0;
 var props$S = {
   size: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$w, 'size');
+      return getComponentConfig(NAME$x, 'size');
     }
   },
   perPage: {
@@ -21367,7 +21586,7 @@ var sanitizeTotalRows = function sanitizeTotalRows(val) {
 
 
 var BPagination = /*#__PURE__*/Vue.extend({
-  name: NAME$w,
+  name: NAME$x,
   mixins: [paginationMixin],
   props: props$S,
   computed: {
@@ -21445,8 +21664,8 @@ var BPagination = /*#__PURE__*/Vue.extend({
         // Keep the current button focused if possible
         var target = evt.target;
 
-        if (isVisible(target) && _this2.$el.contains(target) && target.focus) {
-          target.focus();
+        if (isVisible(target) && _this2.$el.contains(target)) {
+          attemptFocus(target);
         } else {
           _this2.focusCurrent();
         }
@@ -21472,7 +21691,7 @@ var PaginationPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$x = 'BPaginationNav'; // Sanitize the provided number of pages (converting to a number)
+var NAME$y = 'BPaginationNav'; // Sanitize the provided number of pages (converting to a number)
 
 var sanitizeNumberOfPages = function sanitizeNumberOfPages(value) {
   return mathMax(toInteger(value, 0), 1);
@@ -21481,7 +21700,7 @@ var props$T = {
   size: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$x, 'size');
+      return getComponentConfig(NAME$y, 'size');
     }
   },
   numberOfPages: {
@@ -21493,7 +21712,7 @@ var props$T = {
       var number = toInteger(value, 0);
 
       if (number < 1) {
-        warn('Prop "number-of-pages" must be a number greater than "0"', NAME$x);
+        warn('Prop "number-of-pages" must be a number greater than "0"', NAME$y);
         return false;
       }
 
@@ -21548,7 +21767,7 @@ var props$T = {
 // @vue/component
 
 var BPaginationNav = /*#__PURE__*/Vue.extend({
-  name: NAME$x,
+  name: NAME$y,
   mixins: [paginationMixin],
   props: props$T,
   computed: {
@@ -21626,13 +21845,11 @@ var BPaginationNav = /*#__PURE__*/Vue.extend({
         _this5.$emit('change', pageNum);
       });
       this.$nextTick(function () {
-        // Done in a nextTick() to ensure rendering complete
-        try {
-          // Emulate native link click page reloading behaviour by blurring the
-          // paginator and returning focus to the document
-          var target = evt.currentTarget || evt.target;
-          target.blur();
-        } catch (e) {}
+        // Emulate native link click page reloading behaviour by blurring the
+        // paginator and returning focus to the document
+        // Done in a `nextTick()` to ensure rendering complete
+        var target = evt.currentTarget || evt.target;
+        attemptBlur(target);
       });
     },
     getPageInfo: function getPageInfo(pageNum) {
@@ -21822,7 +22039,7 @@ var PaginationNavPlugin = /*#__PURE__*/pluginFactory({
 });
 
 // Base on-demand component for tooltip / popover templates
-var NAME$y = 'BVPopper';
+var NAME$z = 'BVPopper';
 var AttachmentMap$1 = {
   AUTO: 'auto',
   TOP: 'top',
@@ -21855,7 +22072,7 @@ var OffsetMap = {
 }; // @vue/component
 
 var BVPopper = /*#__PURE__*/Vue.extend({
-  name: NAME$y,
+  name: NAME$z,
   props: {
     target: {
       // Element that the tooltip/popover is positioned relative to
@@ -22076,10 +22293,10 @@ var BVPopper = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$z = 'BVTooltipTemplate'; // @vue/component
+var NAME$A = 'BVTooltipTemplate'; // @vue/component
 
 var BVTooltipTemplate = /*#__PURE__*/Vue.extend({
-  name: NAME$z,
+  name: NAME$A,
   extends: BVPopper,
   mixins: [scopedStyleAttrsMixin],
   props: {
@@ -22183,7 +22400,7 @@ var BVTooltipTemplate = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$A = 'BVTooltip'; // Modal container selector for appending tooltip/popover
+var NAME$B = 'BVTooltip'; // Modal container selector for appending tooltip/popover
 
 var MODAL_SELECTOR = '.modal-content'; // Modal `$root` hidden event
 
@@ -22244,7 +22461,7 @@ var templateData = {
 }; // @vue/component
 
 var BVTooltip = /*#__PURE__*/Vue.extend({
-  name: NAME$A,
+  name: NAME$B,
   props: {// None
   },
   data: function data() {
@@ -23023,18 +23240,15 @@ var BVTooltip = /*#__PURE__*/Vue.extend({
       if (!this.$_enabled || this.dropdownOpen()) {
         /* istanbul ignore next */
         return;
-      }
+      } // Get around a WebKit bug where `click` does not trigger focus events
+      // On most browsers, `click` triggers a `focusin`/`focus` event first
+      // Needed so that trigger 'click blur' works on iOS
+      // https://github.com/bootstrap-vue/bootstrap-vue/issues/5099
+      // We use `currentTarget` rather than `target` to trigger on the
+      // element, not the inner content
 
-      try {
-        // Get around a WebKit bug where `click` does not trigger focus events
-        // On most browsers, `click` triggers a `focusin`/`focus` event first
-        // Needed so that trigger 'click blur' works on iOS
-        // https://github.com/bootstrap-vue/bootstrap-vue/issues/5099
-        // We use `currentTarget` rather than `target` to trigger on the
-        // element, not the inner content
-        evt.currentTarget.focus();
-      } catch (_unused2) {}
 
+      attemptFocus(evt.currentTarget);
       this.activeTrigger.click = !this.activeTrigger.click;
 
       if (this.isWithActiveTrigger) {
@@ -23139,10 +23353,10 @@ var BVTooltip = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$B = 'BTooltip'; // @vue/component
+var NAME$C = 'BTooltip'; // @vue/component
 
 var BTooltip = /*#__PURE__*/Vue.extend({
-  name: NAME$B,
+  name: NAME$C,
   props: {
     title: {
       type: String // default: undefined
@@ -23179,19 +23393,19 @@ var BTooltip = /*#__PURE__*/Vue.extend({
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$B, 'variant');
+        return getComponentConfig(NAME$C, 'variant');
       }
     },
     customClass: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$B, 'customClass');
+        return getComponentConfig(NAME$C, 'customClass');
       }
     },
     delay: {
       type: [Number, Object, String],
       default: function _default() {
-        return getComponentConfig(NAME$B, 'delay');
+        return getComponentConfig(NAME$C, 'delay');
       }
     },
     boundary: {
@@ -23200,13 +23414,13 @@ var BTooltip = /*#__PURE__*/Vue.extend({
       // Object: Vue component
       type: [String, HTMLElement, Object],
       default: function _default() {
-        return getComponentConfig(NAME$B, 'boundary');
+        return getComponentConfig(NAME$C, 'boundary');
       }
     },
     boundaryPadding: {
       type: [Number, String],
       default: function _default() {
-        return getComponentConfig(NAME$B, 'boundaryPadding');
+        return getComponentConfig(NAME$C, 'boundaryPadding');
       }
     },
     offset: {
@@ -23481,10 +23695,10 @@ var BTooltip = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$C = 'BVPopoverTemplate'; // @vue/component
+var NAME$D = 'BVPopoverTemplate'; // @vue/component
 
 var BVPopoverTemplate = /*#__PURE__*/Vue.extend({
-  name: NAME$C,
+  name: NAME$D,
   extends: BVTooltipTemplate,
   computed: {
     templateType: function templateType() {
@@ -23527,10 +23741,10 @@ var BVPopoverTemplate = /*#__PURE__*/Vue.extend({
 });
 
 // Popover "Class" (Built as a renderless Vue instance)
-var NAME$D = 'BVPopover'; // @vue/component
+var NAME$E = 'BVPopover'; // @vue/component
 
 var BVPopover = /*#__PURE__*/Vue.extend({
-  name: NAME$D,
+  name: NAME$E,
   extends: BVTooltip,
   computed: {
     // Overwrites BVTooltip
@@ -23546,9 +23760,9 @@ var BVPopover = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$E = 'BPopover';
+var NAME$F = 'BPopover';
 var BPopover = /*#__PURE__*/Vue.extend({
-  name: NAME$E,
+  name: NAME$F,
   extends: BTooltip,
   inheritAttrs: false,
   props: {
@@ -23571,19 +23785,19 @@ var BPopover = /*#__PURE__*/Vue.extend({
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$E, 'variant');
+        return getComponentConfig(NAME$F, 'variant');
       }
     },
     customClass: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$E, 'customClass');
+        return getComponentConfig(NAME$F, 'customClass');
       }
     },
     delay: {
       type: [Number, Object, String],
       default: function _default() {
-        return getComponentConfig(NAME$E, 'delay');
+        return getComponentConfig(NAME$F, 'delay');
       }
     },
     boundary: {
@@ -23592,13 +23806,13 @@ var BPopover = /*#__PURE__*/Vue.extend({
       // Object: Vue component
       type: [String, HTMLElement, Object],
       default: function _default() {
-        return getComponentConfig(NAME$E, 'boundary');
+        return getComponentConfig(NAME$F, 'boundary');
       }
     },
     boundaryPadding: {
       type: [Number, String],
       default: function _default() {
-        return getComponentConfig(NAME$E, 'boundaryPadding');
+        return getComponentConfig(NAME$F, 'boundaryPadding');
       }
     }
   },
@@ -23889,10 +24103,10 @@ var PopoverPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$F = 'BProgressBar'; // @vue/component
+var NAME$G = 'BProgressBar'; // @vue/component
 
 var BProgressBar = /*#__PURE__*/Vue.extend({
-  name: NAME$F,
+  name: NAME$G,
   mixins: [normalizeSlotMixin],
   inject: {
     bvProgress: {
@@ -23928,7 +24142,7 @@ var BProgressBar = /*#__PURE__*/Vue.extend({
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$F, 'variant');
+        return getComponentConfig(NAME$G, 'variant');
       }
     },
     striped: {
@@ -24026,10 +24240,10 @@ var BProgressBar = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$G = 'BProgress'; // @vue/component
+var NAME$H = 'BProgress'; // @vue/component
 
 var BProgress = /*#__PURE__*/Vue.extend({
-  name: NAME$G,
+  name: NAME$H,
   mixins: [normalizeSlotMixin],
   provide: function provide() {
     return {
@@ -24041,7 +24255,7 @@ var BProgress = /*#__PURE__*/Vue.extend({
     variant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$G, 'variant');
+        return getComponentConfig(NAME$H, 'variant');
       }
     },
     striped: {
@@ -24117,7 +24331,7 @@ var ProgressPlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$H = 'BSidebar';
+var NAME$I = 'BSidebar';
 var CLASS_NAME$3 = 'b-sidebar'; // --- Render methods ---
 
 var renderHeaderTitle = function renderHeaderTitle(h, ctx) {
@@ -24222,8 +24436,9 @@ var renderBackdrop = function renderBackdrop(h, ctx) {
 
 
 var BSidebar = /*#__PURE__*/Vue.extend({
-  name: NAME$H,
-  mixins: [idMixin, listenOnRootMixin, normalizeSlotMixin],
+  name: NAME$I,
+  // Mixin order is important!
+  mixins: [attrsMixin, idMixin, listenOnRootMixin, normalizeSlotMixin],
   inheritAttrs: false,
   model: {
     prop: 'visible',
@@ -24241,25 +24456,25 @@ var BSidebar = /*#__PURE__*/Vue.extend({
     bgVariant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$H, 'bgVariant');
+        return getComponentConfig(NAME$I, 'bgVariant');
       }
     },
     textVariant: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$H, 'textVariant');
+        return getComponentConfig(NAME$I, 'textVariant');
       }
     },
     shadow: {
       type: [Boolean, String],
       default: function _default() {
-        return getComponentConfig(NAME$H, 'shadow');
+        return getComponentConfig(NAME$I, 'shadow');
       }
     },
     width: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$H, 'width');
+        return getComponentConfig(NAME$I, 'width');
       }
     },
     zIndex: {
@@ -24283,7 +24498,7 @@ var BSidebar = /*#__PURE__*/Vue.extend({
     tag: {
       type: String,
       default: function _default() {
-        return getComponentConfig(NAME$H, 'tag');
+        return getComponentConfig(NAME$I, 'tag');
       }
     },
     sidebarClass: {
@@ -24370,6 +24585,23 @@ var BSidebar = /*#__PURE__*/Vue.extend({
         right: this.right,
         hide: this.hide
       };
+    },
+    computedTile: function computedTile() {
+      return this.normalizeSlot('title', this.slotScope) || toString$1(this.title) || null;
+    },
+    titleId: function titleId() {
+      return this.computedTile ? this.safeId('__title__') : null;
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        id: this.safeId(),
+        tabindex: '-1',
+        role: 'dialog',
+        'aria-modal': this.backdrop ? 'true' : 'false',
+        'aria-hidden': this.localShow ? null : 'true',
+        'aria-label': this.ariaLabel || null,
+        'aria-labelledby': this.ariaLabelledby || this.titleId || null
+      });
     }
   },
   watch: {
@@ -24469,10 +24701,7 @@ var BSidebar = /*#__PURE__*/Vue.extend({
     /* istanbul ignore next */
     {
       var tabables = getTabables(this.$refs.content);
-
-      try {
-        tabables.reverse()[0].focus();
-      } catch (_unused) {}
+      attemptFocus(tabables.reverse()[0]);
     },
 
     /* istanbul ignore next */
@@ -24480,35 +24709,24 @@ var BSidebar = /*#__PURE__*/Vue.extend({
     /* istanbul ignore next */
     {
       var tabables = getTabables(this.$refs.content);
-
-      try {
-        tabables[0].focus();
-      } catch (_unused2) {}
+      attemptFocus(tabables[0]);
     },
     onBeforeEnter: function onBeforeEnter() {
-      this.$_returnFocusEl = null;
-
-      try {
-        this.$_returnFocusEl = document.activeElement || null;
-      } catch (_unused3) {} // Trigger lazy render
-
+      // Returning focus to `document.body` may cause unwanted scrolls,
+      // so we exclude setting focus on body
+      this.$_returnFocusEl = getActiveElement(isBrowser ? [document.body] : []); // Trigger lazy render
 
       this.isOpen = true;
     },
     onAfterEnter: function onAfterEnter(el) {
-      try {
-        if (!contains(el, document.activeElement)) {
-          el.focus();
-        }
-      } catch (_unused4) {}
+      if (!contains(el, getActiveElement())) {
+        attemptFocus(el);
+      }
 
       this.$emit('shown');
     },
     onAfterLeave: function onAfterLeave() {
-      try {
-        this.$_returnFocusEl.focus();
-      } catch (_unused5) {}
-
+      attemptFocus(this.$_returnFocusEl);
       this.$_returnFocusEl = null; // Trigger lazy render
 
       this.isOpen = false;
@@ -24520,11 +24738,6 @@ var BSidebar = /*#__PURE__*/Vue.extend({
 
     var localShow = this.localShow;
     var shadow = this.shadow === '' ? true : this.shadow;
-    var title = this.normalizeSlot('title', this.slotScope) || toString$1(this.title) || null;
-    var titleId = title ? this.safeId('__title__') : null;
-    var ariaLabel = this.ariaLabel || null; // `ariaLabel` takes precedence over `ariaLabelledby`
-
-    var ariaLabelledby = this.ariaLabelledby || titleId || null;
     var $sidebar = h(this.tag, {
       ref: 'content',
       directives: [{
@@ -24535,15 +24748,7 @@ var BSidebar = /*#__PURE__*/Vue.extend({
       class: [(_ref = {
         shadow: shadow === true
       }, _defineProperty(_ref, "shadow-".concat(shadow), shadow && shadow !== true), _defineProperty(_ref, "".concat(CLASS_NAME$3, "-right"), this.right), _defineProperty(_ref, "bg-".concat(this.bgVariant), !!this.bgVariant), _defineProperty(_ref, "text-".concat(this.textVariant), !!this.textVariant), _ref), this.sidebarClass],
-      attrs: _objectSpread2(_objectSpread2({}, this.$attrs), {}, {
-        id: this.safeId(),
-        tabindex: '-1',
-        role: 'dialog',
-        'aria-modal': this.backdrop ? 'true' : 'false',
-        'aria-hidden': localShow ? null : 'true',
-        'aria-label': ariaLabel,
-        'aria-labelledby': ariaLabelledby
-      }),
+      attrs: this.computedAttrs,
       style: {
         width: this.width
       }
@@ -24595,12 +24800,6 @@ var BSidebar = /*#__PURE__*/Vue.extend({
         keydown: this.onKeydown
       }
     }, [$tabTrapTop, $sidebar, $tabTrapBottom, $backdrop]);
-  }
-});
-
-var VBTogglePlugin = /*#__PURE__*/pluginFactory({
-  directives: {
-    VBToggle: VBToggle
   }
 });
 
@@ -25761,7 +25960,7 @@ var props$U = {
   headVariant: {
     // Also sniffed by <b-tr> / <b-td> / <b-th>
     type: String,
-    // supported values: 'lite', 'dark', or null
+    // Supported values: 'lite', 'dark', or null
     default: null
   }
 }; // TODO:
@@ -25771,7 +25970,8 @@ var props$U = {
 
 var BThead = /*#__PURE__*/Vue.extend({
   name: 'BThead',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -25831,7 +26031,7 @@ var BThead = /*#__PURE__*/Vue.extend({
     theadAttrs: function theadAttrs() {
       return _objectSpread2({
         role: 'rowgroup'
-      }, this.$attrs);
+      }, this.bvAttrs);
     }
   },
   render: function render(h) {
@@ -25839,7 +26039,7 @@ var BThead = /*#__PURE__*/Vue.extend({
       class: this.theadClasses,
       attrs: this.theadAttrs,
       // Pass down any native listeners
-      on: this.$listeners
+      on: this.bvListeners
     }, this.normalizeSlot('default'));
   }
 });
@@ -25847,7 +26047,7 @@ var BThead = /*#__PURE__*/Vue.extend({
 var props$V = {
   footVariant: {
     type: String,
-    // supported values: 'lite', 'dark', or null
+    // Supported values: 'lite', 'dark', or null
     default: null
   }
 }; // TODO:
@@ -25857,7 +26057,8 @@ var props$V = {
 
 var BTfoot = /*#__PURE__*/Vue.extend({
   name: 'BTfoot',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -25915,7 +26116,7 @@ var BTfoot = /*#__PURE__*/Vue.extend({
     tfootAttrs: function tfootAttrs() {
       return _objectSpread2({
         role: 'rowgroup'
-      }, this.$attrs);
+      }, this.bvAttrs);
     }
   },
   render: function render(h) {
@@ -25923,7 +26124,7 @@ var BTfoot = /*#__PURE__*/Vue.extend({
       class: this.tfootClasses,
       attrs: this.tfootAttrs,
       // Pass down any native listeners
-      on: this.$listeners
+      on: this.bvListeners
     }, this.normalizeSlot('default'));
   }
 });
@@ -25942,7 +26143,8 @@ var DARK = 'dark'; // TODO:
 
 var BTr = /*#__PURE__*/Vue.extend({
   name: 'BTr',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -26021,7 +26223,7 @@ var BTr = /*#__PURE__*/Vue.extend({
     trAttrs: function trAttrs() {
       return _objectSpread2({
         role: 'row'
-      }, this.$attrs);
+      }, this.bvAttrs);
     }
   },
   render: function render(h) {
@@ -26029,7 +26231,7 @@ var BTr = /*#__PURE__*/Vue.extend({
       class: this.trClasses,
       attrs: this.trAttrs,
       // Pass native listeners to child
-      on: this.$listeners
+      on: this.bvListeners
     }, this.normalizeSlot('default'));
   }
 });
@@ -26043,7 +26245,8 @@ var parseSpan = function parseSpan(value) {
 
 var spanValidator = function spanValidator(val) {
   return isUndefinedOrNull(val) || parseSpan(val) > 0;
-};
+}; // --- Props ---
+
 
 var props$X = {
   variant: {
@@ -26075,7 +26278,8 @@ var props$X = {
 
 var BTd = /*#__PURE__*/Vue.extend({
   name: 'BTableCell',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   inject: {
     bvTableTr: {
@@ -26192,7 +26396,7 @@ var BTd = /*#__PURE__*/Vue.extend({
         rowspan: rowspan,
         role: role,
         scope: scope
-      }, this.$attrs), {}, {
+      }, this.bvAttrs), {}, {
         // Add in the stacked cell label data-attribute if in
         // stacked mode (if a stacked heading label is provided)
         'data-label': this.isStackedCell && !isUndefinedOrNull(this.stackedHeading) ?
@@ -26207,7 +26411,7 @@ var BTd = /*#__PURE__*/Vue.extend({
       class: this.cellClasses,
       attrs: this.cellAttrs,
       // Transfer any native listeners
-      on: this.$listeners
+      on: this.bvListeners
     }, [this.isStackedCell ? h('div', [content]) : content]);
   }
 });
@@ -26485,7 +26689,8 @@ var props$Y = {
 
 var BTbody = /*#__PURE__*/Vue.extend({
   name: 'BTbody',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -26543,7 +26748,7 @@ var BTbody = /*#__PURE__*/Vue.extend({
     tbodyAttrs: function tbodyAttrs() {
       return _objectSpread2({
         role: 'rowgroup'
-      }, this.$attrs);
+      }, this.bvAttrs);
     },
     tbodyProps: function tbodyProps() {
       return this.tbodyTransitionProps ? _objectSpread2(_objectSpread2({}, this.tbodyTransitionProps), {}, {
@@ -26558,13 +26763,12 @@ var BTbody = /*#__PURE__*/Vue.extend({
     };
 
     if (this.isTransitionGroup) {
-      // We use native listeners if a transition group
-      // for any delegated events
+      // We use native listeners if a transition group for any delegated events
       data.on = this.tbodyTransitionHandlers || {};
-      data.nativeOn = this.$listeners || {};
+      data.nativeOn = this.bvListeners;
     } else {
       // Otherwise we place any listeners on the tbody element
-      data.on = this.$listeners || {};
+      data.on = this.bvListeners;
     }
 
     return h(this.isTransitionGroup ? 'transition-group' : 'tbody', data, this.normalizeSlot('default'));
@@ -26961,7 +27165,7 @@ var tbodyMixin = {
       // Keyboard navigation and row click emulation
       var target = evt.target;
 
-      if (this.tbodyRowEvtStopped(evt) || target.tagName !== 'TR' || target !== document.activeElement || target.tabIndex !== 0) {
+      if (this.tbodyRowEvtStopped(evt) || target.tagName !== 'TR' || !isActiveElement(target) || target.tabIndex !== 0) {
         // Early exit if not an item row TR
         return;
       }
@@ -26985,16 +27189,16 @@ var tbodyMixin = {
 
           if (keyCode === KEY_CODES.HOME || shift && keyCode === KEY_CODES.UP) {
             // Focus first row
-            trs[0].focus();
+            attemptFocus(trs[0]);
           } else if (keyCode === KEY_CODES.END || shift && keyCode === KEY_CODES.DOWN) {
             // Focus last row
-            trs[trs.length - 1].focus();
+            attemptFocus(trs[trs.length - 1]);
           } else if (keyCode === KEY_CODES.UP && rowIndex > 0) {
             // Focus previous row
-            trs[rowIndex - 1].focus();
+            attemptFocus(trs[rowIndex - 1]);
           } else if (keyCode === KEY_CODES.DOWN && rowIndex < trs.length - 1) {
             // Focus next row
-            trs[rowIndex + 1].focus();
+            attemptFocus(trs[rowIndex + 1]);
           }
         }
       }
@@ -27724,6 +27928,8 @@ var tableRendererMixin = {
   // Don't place attributes on root element automatically,
   // as table could be wrapped in responsive `<div>`
   inheritAttrs: false,
+  // Mixin order is important!
+  mixins: [attrsMixin],
   provide: function provide() {
     return {
       bvTable: this
@@ -27828,7 +28034,7 @@ var tableRendererMixin = {
     },
     tableAttrs: function tableAttrs() {
       // Preserve user supplied aria-describedby, if provided in `$attrs`
-      var adb = [(this.$attrs || {})['aria-describedby'], this.captionId].filter(identity).join(' ') || null;
+      var adb = [(this.bvAttrs || {})['aria-describedby'], this.captionId].filter(identity).join(' ') || null;
       var items = this.computedItems;
       var filteredItems = this.filteredItems;
       var fields = this.computedFields;
@@ -27843,7 +28049,7 @@ var tableRendererMixin = {
         // We set `aria-rowcount` before merging in `$attrs`,
         // in case user has supplied their own
         'aria-rowcount': rowCount
-      }, this.$attrs), {}, {
+      }, this.bvAttrs), {}, {
         // Now we can override any `$attrs` here
         id: this.safeId(),
         role: 'table'
@@ -27889,10 +28095,11 @@ var tableRendererMixin = {
 var BTable = /*#__PURE__*/Vue.extend({
   name: 'BTable',
   // Order of mixins is important!
-  // They are merged from first to last, followed by this component.
-  mixins: [// Required Mixins
-  hasListenerMixin, idMixin, normalizeSlotMixin, itemsMixin, tableRendererMixin, stackedMixin, theadMixin, tfootMixin, tbodyMixin, // Features Mixins
-  stackedMixin, filteringMixin, sortingMixin, paginationMixin$1, captionMixin, colgroupMixin, selectableMixin, emptyMixin, topRowMixin, bottomRowMixin, busyMixin, providerMixin] // render function provided by table-renderer mixin
+  // They are merged from first to last, followed by this component
+  mixins: [// General mixins
+  attrsMixin, hasListenerMixin, idMixin, normalizeSlotMixin, // Required table mixins
+  itemsMixin, tableRendererMixin, stackedMixin, theadMixin, tfootMixin, tbodyMixin, // Table features mixins
+  stackedMixin, filteringMixin, sortingMixin, paginationMixin$1, captionMixin, colgroupMixin, selectableMixin, emptyMixin, topRowMixin, bottomRowMixin, busyMixin, providerMixin] // Render function is provided by table-renderer mixin
 
 });
 
@@ -28017,9 +28224,7 @@ var BTabButtonHelper = /*#__PURE__*/Vue.extend({
   },
   methods: {
     focus: function focus() {
-      if (this.$refs && this.$refs.link && this.$refs.link.focus) {
-        this.$refs.link.focus();
-      }
+      attemptFocus(this.$refs.link);
     },
     handleEvt: function handleEvt(evt) {
       var stop = function stop() {
@@ -28375,6 +28580,7 @@ var BTabs = /*#__PURE__*/Vue.extend({
           attributeFilter: ['id']
         });
       } else {
+        /* istanbul ignore next */
         if (this._bvObserver && this._bvObserver.disconnect) {
           this._bvObserver.disconnect();
         }
@@ -28523,11 +28729,7 @@ var BTabs = /*#__PURE__*/Vue.extend({
 
       // Wrap in `$nextTick()` to ensure DOM has completed rendering/updating before focusing
       this.$nextTick(function () {
-        var button = _this8.getButtonForTab(tab);
-
-        if (button && button.focus) {
-          button.focus();
-        }
+        attemptFocus(_this8.getButtonForTab(tab));
       });
     },
     // Emit a click event on a specified <b-tab> component instance
@@ -28894,7 +29096,7 @@ var TimePlugin = /*#__PURE__*/pluginFactory({
   }
 });
 
-var NAME$I = 'BToaster';
+var NAME$J = 'BToaster';
 var props$_ = {
   name: {
     type: String,
@@ -28903,13 +29105,13 @@ var props$_ = {
   ariaLive: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$I, 'ariaLive');
+      return getComponentConfig(NAME$J, 'ariaLive');
     }
   },
   ariaAtomic: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$I, 'ariaAtomic');
+      return getComponentConfig(NAME$J, 'ariaAtomic');
     } // Allowed: 'true' or 'false' or null
 
   },
@@ -28917,7 +29119,7 @@ var props$_ = {
     // Aria role
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$I, 'role');
+      return getComponentConfig(NAME$J, 'role');
     }
   }
   /*
@@ -28962,7 +29164,7 @@ var DefaultTransition = /*#__PURE__*/Vue.extend({
 }); // @vue/component
 
 var BToaster = /*#__PURE__*/Vue.extend({
-  name: NAME$I,
+  name: NAME$J,
   props: props$_,
   data: function data() {
     return {
@@ -29035,7 +29237,7 @@ var BToaster = /*#__PURE__*/Vue.extend({
   }
 });
 
-var NAME$J = 'BToast';
+var NAME$K = 'BToast';
 var MIN_DURATION = 1000; // --- Props ---
 
 var props$$ = {
@@ -29052,7 +29254,7 @@ var props$$ = {
   toaster: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$J, 'toaster');
+      return getComponentConfig(NAME$K, 'toaster');
     }
   },
   visible: {
@@ -29062,7 +29264,7 @@ var props$$ = {
   variant: {
     type: String,
     default: function _default() {
-      return getComponentConfig(NAME$J, 'variant');
+      return getComponentConfig(NAME$K, 'variant');
     }
   },
   isStatus: {
@@ -29081,7 +29283,7 @@ var props$$ = {
   autoHideDelay: {
     type: [Number, String],
     default: function _default() {
-      return getComponentConfig(NAME$J, 'autoHideDelay');
+      return getComponentConfig(NAME$K, 'autoHideDelay');
     }
   },
   noCloseButton: {
@@ -29103,19 +29305,19 @@ var props$$ = {
   toastClass: {
     type: [String, Object, Array],
     default: function _default() {
-      return getComponentConfig(NAME$J, 'toastClass');
+      return getComponentConfig(NAME$K, 'toastClass');
     }
   },
   headerClass: {
     type: [String, Object, Array],
     default: function _default() {
-      return getComponentConfig(NAME$J, 'headerClass');
+      return getComponentConfig(NAME$K, 'headerClass');
     }
   },
   bodyClass: {
     type: [String, Object, Array],
     default: function _default() {
-      return getComponentConfig(NAME$J, 'bodyClass');
+      return getComponentConfig(NAME$K, 'bodyClass');
     }
   },
   href: {
@@ -29134,8 +29336,8 @@ var props$$ = {
 }; // @vue/component
 
 var BToast = /*#__PURE__*/Vue.extend({
-  name: NAME$J,
-  mixins: [idMixin, listenOnRootMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
+  name: NAME$K,
+  mixins: [attrsMixin, idMixin, listenOnRootMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
   inheritAttrs: false,
   model: {
     prop: 'visible',
@@ -29182,6 +29384,12 @@ var BToast = /*#__PURE__*/Vue.extend({
         beforeLeave: this.onBeforeLeave,
         afterLeave: this.onAfterLeave
       };
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread2(_objectSpread2({}, this.bvAttrs), {}, {
+        id: this.safeId(),
+        tabindex: '0'
+      });
     }
   },
   watch: {
@@ -29447,10 +29655,7 @@ var BToast = /*#__PURE__*/Vue.extend({
         ref: 'toast',
         staticClass: 'toast',
         class: this.toastClass,
-        attrs: _objectSpread2(_objectSpread2({}, this.$attrs), {}, {
-          tabindex: '0',
-          id: this.safeId()
-        })
+        attrs: this.computedAttrs
       }, [$header, $body]);
       return $toast;
     }
@@ -29664,9 +29869,8 @@ var plugin$1 = function plugin(Vue) {
     }
   }); // Define our read-only `$bvToast` instance property
   // Placed in an if just in case in HMR mode
-  // eslint-disable-next-line no-prototype-builtins
 
-  if (!Vue.prototype.hasOwnProperty(PROP_NAME$3)) {
+  if (!hasOwnProperty(Vue.prototype, PROP_NAME$3)) {
     defineProperty(Vue.prototype, PROP_NAME$3, {
       get: function get() {
         /* istanbul ignore next */
@@ -30032,7 +30236,7 @@ var VBModalPlugin = /*#__PURE__*/pluginFactory({
  * Constants / Defaults
  */
 
-var NAME$K = 'v-b-scrollspy';
+var NAME$L = 'v-b-scrollspy';
 var ACTIVATE_EVENT = 'bv::scrollspy::activate';
 var Default = {
   element: 'body',
@@ -30088,7 +30292,7 @@ var typeCheckConfig = function typeCheckConfig(componentName, config, configType
 /* istanbul ignore next: not easy to test */
 {
   for (var property in configTypes) {
-    if (Object.prototype.hasOwnProperty.call(configTypes, property)) {
+    if (hasOwnProperty(configTypes, property)) {
       var expectedTypes = configTypes[property];
       var value = config[property];
       var valueType = value && isElement(value) ? 'element' : toType$1(value); // handle Vue instances
@@ -30510,7 +30714,7 @@ var ScrollSpy
   }], [{
     key: "Name",
     get: function get() {
-      return NAME$K;
+      return NAME$L;
     }
   }, {
     key: "Default",
@@ -31255,7 +31459,7 @@ var BootstrapVueIcons = /*#__PURE__*/pluginFactoryNoConfig({
   NAME: 'BootstrapVueIcons'
 }); // --- END AUTO-GENERATED FILE ---
 
-var NAME$L = 'BootstrapVue'; // --- BootstrapVue installer ---
+var NAME$M = 'BootstrapVue'; // --- BootstrapVue installer ---
 
 var install = /*#__PURE__*/installFactory({
   plugins: {
@@ -31266,7 +31470,7 @@ var install = /*#__PURE__*/installFactory({
 
 var BootstrapVue = /*#__PURE__*/{
   install: install,
-  NAME: NAME$L
+  NAME: NAME$M
 }; // --- Named exports for BvConfigPlugin ---
 
 exports.AlertPlugin = AlertPlugin;
@@ -31275,6 +31479,7 @@ exports.AvatarPlugin = AvatarPlugin;
 exports.BAlert = BAlert;
 exports.BAspect = BAspect;
 exports.BAvatar = BAvatar;
+exports.BAvatarGroup = BAvatarGroup;
 exports.BBadge = BBadge;
 exports.BBreadcrumb = BBreadcrumb;
 exports.BBreadcrumbItem = BBreadcrumbItem;
@@ -31956,7 +32161,7 @@ exports.LinkPlugin = LinkPlugin;
 exports.ListGroupPlugin = ListGroupPlugin;
 exports.MediaPlugin = MediaPlugin;
 exports.ModalPlugin = ModalPlugin;
-exports.NAME = NAME$L;
+exports.NAME = NAME$M;
 exports.NavPlugin = NavPlugin;
 exports.NavbarPlugin = NavbarPlugin;
 exports.OverlayPlugin = OverlayPlugin;

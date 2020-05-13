@@ -11,12 +11,13 @@ import looseEqual from '../../utils/loose-equal';
 import { arrayIncludes, concat } from '../../utils/array';
 import { getComponentConfig } from '../../utils/config';
 import { createDate, createDateFormatter, constrainDate as _constrainDate, datesEqual, firstDateOfMonth, formatYMD, lastDateOfMonth, oneMonthAgo, oneMonthAhead, oneYearAgo, oneYearAhead, oneDecadeAgo, oneDecadeAhead, parseYMD, resolveLocale } from '../../utils/date';
-import { requestAF } from '../../utils/dom';
+import { attemptBlur, attemptFocus, requestAF } from '../../utils/dom';
 import { isArray, isFunction, isPlainObject, isString } from '../../utils/inspect';
 import { isLocaleRTL } from '../../utils/locale';
 import { mathMax } from '../../utils/math';
 import { toInteger } from '../../utils/number';
 import { toString } from '../../utils/string';
+import attrsMixin from '../../mixins/attrs';
 import idMixin from '../../mixins/id';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 import { BIconChevronLeft, BIconChevronDoubleLeft, BIconChevronBarLeft, BIconCircleFill } from '../../icons/icons'; // --- Constants ---
@@ -44,7 +45,8 @@ export var STR_NARROW = 'narrow'; // --- BCalendar component ---
 
 export var BCalendar = Vue.extend({
   name: NAME,
-  mixins: [idMixin, normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, idMixin, normalizeSlotMixin],
   model: {
     // Even though this is the default that Vue assumes, we need
     // to add it for the docs to reflect that this is the model
@@ -287,6 +289,27 @@ export var BCalendar = Vue.extend({
     };
   },
   computed: {
+    valueId: function valueId() {
+      return this.safeId();
+    },
+    widgetId: function widgetId() {
+      return this.safeId('_calendar-wrapper_');
+    },
+    navId: function navId() {
+      return this.safeId('_calendar-nav_');
+    },
+    gridId: function gridId() {
+      return this.safeId('_calendar-grid_');
+    },
+    gridCaptionId: function gridCaptionId() {
+      return this.safeId('_calendar-grid-caption_');
+    },
+    gridHelpId: function gridHelpId() {
+      return this.safeId('_calendar-grid-help_');
+    },
+    activeId: function activeId() {
+      return this.activeYMD ? this.safeId("_cell-".concat(this.activeYMD, "_")) : null;
+    },
     // TODO: Use computed props to convert `YYYY-MM-DD` to `Date` object
     selectedDate: function selectedDate() {
       // Selected as a `Date` object
@@ -637,15 +660,13 @@ export var BCalendar = Vue.extend({
     // Public method(s)
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.grid.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.grid);
       }
     },
     blur: function blur() {
-      try {
-        this.$refs.grid.blur();
-      } catch (_unused2) {}
+      if (!this.disabled) {
+        attemptBlur(this.$refs.grid);
+      }
     },
     // Private methods
     setLive: function setLive(on) {
@@ -825,28 +846,26 @@ export var BCalendar = Vue.extend({
   render: function render(h) {
     var _this5 = this;
 
-    // If hidden prop is set, render just a placeholder node
+    // If `hidden` prop is set, render just a placeholder node
     if (this.hidden) {
       return h();
     }
 
-    var isLive = this.isLive,
+    var valueId = this.valueId,
+        widgetId = this.widgetId,
+        navId = this.navId,
+        gridId = this.gridId,
+        gridCaptionId = this.gridCaptionId,
+        gridHelpId = this.gridHelpId,
+        activeId = this.activeId,
+        isLive = this.isLive,
         isRTL = this.isRTL,
         activeYMD = this.activeYMD,
         selectedYMD = this.selectedYMD,
         safeId = this.safeId;
     var hideDecadeNav = !this.showDecadeNav;
     var todayYMD = formatYMD(this.getToday());
-    var highlightToday = !this.noHighlightToday; // Pre-compute some IDs
-    // This should be computed props
-
-    var idValue = safeId();
-    var idWidget = safeId('_calendar-wrapper_');
-    var idNav = safeId('_calendar-nav_');
-    var idGrid = safeId('_calendar-grid_');
-    var idGridCaption = safeId('_calendar-grid-caption_');
-    var idGridHelp = safeId('_calendar-grid-help_');
-    var idActive = activeYMD ? safeId("_cell-".concat(activeYMD, "_")) : null; // Header showing current selected date
+    var highlightToday = !this.noHighlightToday; // Header showing current selected date
 
     var $header = h('output', {
       staticClass: 'form-control form-control-sm text-center',
@@ -855,8 +874,8 @@ export var BCalendar = Vue.extend({
         readonly: this.readonly || this.disabled
       },
       attrs: {
-        id: idValue,
-        for: idGrid,
+        id: valueId,
+        for: gridId,
         role: 'status',
         tabindex: this.disabled ? null : '-1',
         // Mainly for testing purposes, as we do not know
@@ -953,11 +972,11 @@ export var BCalendar = Vue.extend({
     var $nav = h('div', {
       staticClass: 'b-calendar-nav d-flex',
       attrs: {
-        id: idNav,
+        id: navId,
         role: 'group',
         'aria-hidden': this.disabled ? 'true' : null,
         'aria-label': this.labelNav || null,
-        'aria-controls': idGrid
+        'aria-controls': gridId
       }
     }, [hideDecadeNav ? h() : makeNavBtn($prevDecadeIcon, this.labelPrevDecade, this.gotoPrevDecade, this.prevDecadeDisabled, 'Ctrl+Alt+PageDown'), makeNavBtn($prevYearIcon, this.labelPrevYear, this.gotoPrevYear, this.prevYearDisabled, 'Alt+PageDown'), makeNavBtn($prevMonthIcon, this.labelPrevMonth, this.gotoPrevMonth, this.prevMonthDisabled, 'PageDown'), makeNavBtn($thisMonthIcon, this.labelCurrentMonth, this.gotoCurrentMonth, this.thisMonthDisabled, 'Home'), makeNavBtn($nextMonthIcon, this.labelNextMonth, this.gotoNextMonth, this.nextMonthDisabled, 'PageUp'), makeNavBtn($nextYearIcon, this.labelNextYear, this.gotoNextYear, this.nextYearDisabled, 'Alt+PageUp'), hideDecadeNav ? h() : makeNavBtn($nextDecadeIcon, this.labelNextDecade, this.gotoNextDecade, this.nextDecadeDisabled, 'Ctrl+Alt+PageUp')]); // Caption for calendar grid
 
@@ -968,7 +987,7 @@ export var BCalendar = Vue.extend({
         'text-muted': this.disabled
       },
       attrs: {
-        id: idGridCaption,
+        id: gridCaptionId,
         'aria-live': isLive ? 'polite' : null,
         'aria-atomic': isLive ? 'true' : null
       }
@@ -1059,7 +1078,7 @@ export var BCalendar = Vue.extend({
     var $gridHelp = h('footer', {
       staticClass: 'b-calendar-grid-help border-top small text-muted text-center bg-light',
       attrs: {
-        id: idGridHelp
+        id: gridHelpId
       }
     }, [h('div', {
       staticClass: 'small'
@@ -1068,19 +1087,19 @@ export var BCalendar = Vue.extend({
       ref: 'grid',
       staticClass: 'b-calendar-grid form-control h-auto text-center',
       attrs: {
-        id: idGrid,
+        id: gridId,
         role: 'application',
         tabindex: this.disabled ? null : '0',
         'data-month': activeYMD.slice(0, -3),
         // `YYYY-MM`, mainly for testing
         'aria-roledescription': this.labelCalendar || null,
-        'aria-labelledby': idGridCaption,
-        'aria-describedby': idGridHelp,
+        'aria-labelledby': gridCaptionId,
+        'aria-describedby': gridHelpId,
         // `aria-readonly` is not considered valid on `role="application"`
         // https://www.w3.org/TR/wai-aria-1.1/#aria-readonly
         // 'aria-readonly': this.readonly && !this.disabled ? 'true' : null,
         'aria-disabled': this.disabled ? 'true' : null,
-        'aria-activedescendant': idActive
+        'aria-activedescendant': activeId
       },
       on: {
         keydown: this.onKeydownGrid,
@@ -1099,7 +1118,7 @@ export var BCalendar = Vue.extend({
         width: this.width
       },
       attrs: {
-        id: idWidget,
+        id: widgetId,
         dir: isRTL ? 'rtl' : 'ltr',
         lang: this.computedLocale || null,
         role: 'group',
@@ -1110,7 +1129,7 @@ export var BCalendar = Vue.extend({
         'aria-roledescription': this.roleDescription || null,
         'aria-describedby': [// Should the attr (if present) go last?
         // Or should this attr be a prop?
-        this.$attrs['aria-describedby'], idValue, idGridHelp].filter(identity).join(' ')
+        this.bvAttrs['aria-describedby'], valueId, gridHelpId].filter(identity).join(' ')
       },
       on: {
         keydown: this.onKeydownWrapper

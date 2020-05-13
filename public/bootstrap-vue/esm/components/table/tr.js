@@ -5,6 +5,8 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
+import attrsMixin from '../../mixins/attrs';
+import listenersMixin from '../../mixins/listeners';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 export var props = {
   variant: {
@@ -20,7 +22,8 @@ var DARK = 'dark'; // TODO:
 
 export var BTr = /*#__PURE__*/Vue.extend({
   name: 'BTr',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -99,7 +102,7 @@ export var BTr = /*#__PURE__*/Vue.extend({
     trAttrs: function trAttrs() {
       return _objectSpread({
         role: 'row'
-      }, this.$attrs);
+      }, this.bvAttrs);
     }
   },
   render: function render(h) {
@@ -107,7 +110,7 @@ export var BTr = /*#__PURE__*/Vue.extend({
       class: this.trClasses,
       attrs: this.trAttrs,
       // Pass native listeners to child
-      on: this.$listeners
+      on: this.bvListeners
     }, this.normalizeSlot('default'));
   }
 });

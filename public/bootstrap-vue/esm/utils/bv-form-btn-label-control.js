@@ -4,6 +4,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 // Private component used by `b-form-datepicker` and `b-form-timepicker`
 //
 import Vue from './vue';
+import { attemptBlur, attemptFocus } from './dom';
 import { toString } from './string';
 import dropdownMixin, { commonProps } from '../mixins/dropdown';
 import idMixin from '../mixins/id';
@@ -125,16 +126,12 @@ export var BVFormBtnLabelControl = /*#__PURE__*/Vue.extend({
   methods: {
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.toggle.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.toggle);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.toggle.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$refs.toggle);
       }
     },
     setFocus: function setFocus(evt) {

@@ -7,6 +7,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 import Vue from '../../utils/vue';
 import { BVFormBtnLabelControl, dropdownProps } from '../../utils/bv-form-btn-label-control';
 import { getComponentConfig } from '../../utils/config';
+import { attemptBlur, attemptFocus } from '../../utils/dom';
 import { isUndefinedOrNull } from '../../utils/inspect';
 import idMixin from '../../mixins/id';
 import { BButton } from '../button/button';
@@ -284,16 +285,12 @@ export var BFormTimepicker = /*#__PURE__*/Vue.extend({
     // Public methods
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.control);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.control.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$refs.control);
       }
     },
     // Private methods
@@ -345,9 +342,7 @@ export var BFormTimepicker = /*#__PURE__*/Vue.extend({
       var _this2 = this;
 
       this.$nextTick(function () {
-        try {
-          _this2.$refs.time.focus();
-        } catch (_unused3) {}
+        attemptFocus(_this2.$refs.time);
 
         _this2.$emit('shown');
       });

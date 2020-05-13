@@ -5,12 +5,14 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
+import attrsMixin from '../../mixins/attrs';
+import listenersMixin from '../../mixins/listeners';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 export var props = {
   headVariant: {
     // Also sniffed by <b-tr> / <b-td> / <b-th>
     type: String,
-    // supported values: 'lite', 'dark', or null
+    // Supported values: 'lite', 'dark', or null
     default: null
   }
 }; // TODO:
@@ -20,7 +22,8 @@ export var props = {
 
 export var BThead = /*#__PURE__*/Vue.extend({
   name: 'BThead',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   provide: function provide() {
     return {
@@ -80,7 +83,7 @@ export var BThead = /*#__PURE__*/Vue.extend({
     theadAttrs: function theadAttrs() {
       return _objectSpread({
         role: 'rowgroup'
-      }, this.$attrs);
+      }, this.bvAttrs);
     }
   },
   render: function render(h) {
@@ -88,7 +91,7 @@ export var BThead = /*#__PURE__*/Vue.extend({
       class: this.theadClasses,
       attrs: this.theadAttrs,
       // Pass down any native listeners
-      on: this.$listeners
+      on: this.bvListeners
     }, this.normalizeSlot('default'));
   }
 });

@@ -17,19 +17,22 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
-import normalizeSlotMixin from '../../mixins/normalize-slot';
 import { concat } from '../../utils/array';
+import { attemptBlur, attemptFocus } from '../../utils/dom';
 import { isEvent, isFunction, isUndefined } from '../../utils/inspect';
 import { computeHref, computeRel, computeTag, isRouterLink as _isRouterLink } from '../../utils/router';
+import { omit } from '../../utils/object';
+import attrsMixin from '../../mixins/attrs';
+import listenersMixin from '../../mixins/listeners';
+import normalizeSlotMixin from '../../mixins/normalize-slot';
 /**
- * The Link component is used in many other BV components.
- * As such, sharing its props makes supporting all its features easier.
- * However, some components need to modify the defaults for their own purpose.
+ * The Link component is used in many other BV components
+ * As such, sharing its props makes supporting all its features easier
+ * However, some components need to modify the defaults for their own purpose
  * Prefer sharing a fresh copy of the props to ensure mutations
- * do not affect other component references to the props.
+ * do not affect other component references to the props
  *
- * https://github.com/vuejs/vue-router/blob/dev/src/components/link.js
- * @return {{}}
+ * See: https://github.com/vuejs/vue-router/blob/dev/src/components/link.js
  */
 
 export var propsFactory = function propsFactory() {
@@ -99,7 +102,8 @@ export var props = propsFactory(); // @vue/component
 
 export var BLink = /*#__PURE__*/Vue.extend({
   name: 'BLink',
-  mixins: [normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, listenersMixin, normalizeSlotMixin],
   inheritAttrs: false,
   props: propsFactory(),
   computed: {
@@ -128,9 +132,36 @@ export var BLink = /*#__PURE__*/Vue.extend({
       }, this.computedTag);
     },
     computedProps: function computedProps() {
-      return this.isRouterLink ? _objectSpread(_objectSpread({}, this.$props), {}, {
+      var props = this.isRouterLink ? _objectSpread(_objectSpread({}, this.$props), {}, {
         tag: this.routerTag
-      }) : {};
+      }) : {}; // Ensure the `href` prop does not exist for router links
+
+      return this.computedHref ? props : omit(props, ['href']);
+    },
+    computedAttrs: function computedAttrs() {
+      var bvAttrs = this.bvAttrs,
+          href = this.computedHref,
+          rel = this.computedRel,
+          disabled = this.disabled,
+          target = this.target,
+          routerTag = this.routerTag,
+          isRouterLink = this.isRouterLink;
+      return _objectSpread(_objectSpread(_objectSpread(_objectSpread({}, bvAttrs), href ? {
+        href: href
+      } : {}), isRouterLink && routerTag !== 'a' && routerTag !== 'area' ? {} : {
+        rel: rel,
+        target: target
+      }), {}, {
+        tabindex: disabled ? '-1' : isUndefined(bvAttrs.tabindex) ? null : bvAttrs.tabindex,
+        'aria-disabled': disabled ? 'true' : null
+      });
+    },
+    computedListeners: function computedListeners() {
+      return _objectSpread(_objectSpread({}, this.bvListeners), {}, {
+        // We want to overwrite any click handler since our callback
+        // will invoke the user supplied handler(s) if `!this.disabled`
+        click: this.onClick
+      });
     }
   },
   methods: {
@@ -138,7 +169,7 @@ export var BLink = /*#__PURE__*/Vue.extend({
       var _arguments = arguments;
       var evtIsEvent = isEvent(evt);
       var isRouterLink = this.isRouterLink;
-      var suppliedHandler = this.$listeners.click;
+      var suppliedHandler = this.bvListeners.click;
 
       if (evtIsEvent && this.disabled) {
         // Stop event from bubbling up
@@ -171,55 +202,22 @@ export var BLink = /*#__PURE__*/Vue.extend({
       }
     },
     focus: function focus() {
-      if (this.$el && this.$el.focus) {
-        this.$el.focus();
-      }
+      attemptFocus(this.$el);
     },
     blur: function blur() {
-      if (this.$el && this.$el.blur) {
-        this.$el.blur();
-      }
+      attemptBlur(this.$el);
     }
   },
   render: function render(h) {
     var active = this.active,
-        disabled = this.disabled,
-        target = this.target,
-        routerTag = this.routerTag,
-        isRouterLink = this.isRouterLink;
-    var tag = this.computedTag;
-    var rel = this.computedRel;
-    var href = this.computedHref;
-    var componentData = {
+        disabled = this.disabled;
+    return h(this.computedTag, _defineProperty({
       class: {
         active: active,
         disabled: disabled
       },
-      attrs: _objectSpread(_objectSpread(_objectSpread({}, this.$attrs), isRouterLink && routerTag !== 'a' && routerTag !== 'area' ? {} : {
-        rel: rel,
-        target: target
-      }), {}, {
-        tabindex: disabled ? '-1' : isUndefined(this.$attrs.tabindex) ? null : this.$attrs.tabindex,
-        'aria-disabled': disabled ? 'true' : null
-      }),
+      attrs: this.computedAttrs,
       props: this.computedProps
-    }; // Add the event handlers. We must use `nativeOn` for
-    // `<router-link>`/`<nuxt-link>` instead of `on`
-
-    componentData[isRouterLink ? 'nativeOn' : 'on'] = _objectSpread(_objectSpread({}, this.$listeners), {}, {
-      // We want to overwrite any click handler since our callback
-      // will invoke the user supplied handler(s) if `!this.disabled`
-      click: this.onClick
-    }); // If href attribute exists on <router-link> (even undefined or null) it fails working on
-    // SSR, so we explicitly add it here if needed (i.e. if computedHref() is truthy)
-
-    if (href) {
-      componentData.attrs.href = href;
-    } else {
-      // Ensure the prop HREF does not exist for router links
-      delete componentData.props.href;
-    }
-
-    return h(tag, componentData, this.normalizeSlot('default'));
+    }, this.isRouterLink ? 'nativeOn' : 'on', this.computedListeners), this.normalizeSlot('default'));
   }
 });

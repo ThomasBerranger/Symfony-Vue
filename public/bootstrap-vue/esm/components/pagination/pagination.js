@@ -1,6 +1,6 @@
 import Vue from '../../utils/vue';
 import { getComponentConfig } from '../../utils/config';
-import { isVisible } from '../../utils/dom';
+import { attemptFocus, isVisible } from '../../utils/dom';
 import { isUndefinedOrNull } from '../../utils/inspect';
 import { mathCeil, mathMax } from '../../utils/math';
 import { toInteger } from '../../utils/number';
@@ -121,8 +121,8 @@ export var BPagination = /*#__PURE__*/Vue.extend({
         // Keep the current button focused if possible
         var target = evt.target;
 
-        if (isVisible(target) && _this2.$el.contains(target) && target.focus) {
-          target.focus();
+        if (isVisible(target) && _this2.$el.contains(target)) {
+          attemptFocus(target);
         } else {
           _this2.focusCurrent();
         }

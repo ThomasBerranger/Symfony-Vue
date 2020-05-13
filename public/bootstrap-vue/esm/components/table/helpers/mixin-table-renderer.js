@@ -6,13 +6,16 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 import identity from '../../../utils/identity';
 import { isBoolean } from '../../../utils/inspect';
-import { toString } from '../../../utils/string'; // Main `<table>` render mixin
+import { toString } from '../../../utils/string';
+import attrsMixin from '../../../mixins/attrs'; // Main `<table>` render mixin
 // Includes all main table styling options
 
 export default {
   // Don't place attributes on root element automatically,
   // as table could be wrapped in responsive `<div>`
   inheritAttrs: false,
+  // Mixin order is important!
+  mixins: [attrsMixin],
   provide: function provide() {
     return {
       bvTable: this
@@ -117,7 +120,7 @@ export default {
     },
     tableAttrs: function tableAttrs() {
       // Preserve user supplied aria-describedby, if provided in `$attrs`
-      var adb = [(this.$attrs || {})['aria-describedby'], this.captionId].filter(identity).join(' ') || null;
+      var adb = [(this.bvAttrs || {})['aria-describedby'], this.captionId].filter(identity).join(' ') || null;
       var items = this.computedItems;
       var filteredItems = this.filteredItems;
       var fields = this.computedFields;
@@ -132,7 +135,7 @@ export default {
         // We set `aria-rowcount` before merging in `$attrs`,
         // in case user has supplied their own
         'aria-rowcount': rowCount
-      }, this.$attrs), {}, {
+      }, this.bvAttrs), {}, {
         // Now we can override any `$attrs` here
         id: this.safeId(),
         role: 'table'

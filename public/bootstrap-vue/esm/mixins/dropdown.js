@@ -7,7 +7,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 import Popper from 'popper.js';
 import KeyCodes from '../utils/key-codes';
 import { BvEvent } from '../utils/bv-event.class';
-import { closest, contains, isVisible, requestAF, selectAll } from '../utils/dom';
+import { attemptFocus, closest, contains, isVisible, requestAF, selectAll } from '../utils/dom';
 import { isNull } from '../utils/inspect';
 import { HTMLElement } from '../utils/safe-types';
 import { warn } from '../utils/warn';
@@ -479,33 +479,24 @@ export default {
         _this3.focusItem(index, items);
       });
     },
-    focusItem: function focusItem(idx, items) {
+    focusItem: function focusItem(index, items) {
       var el = items.find(function (el, i) {
-        return i === idx;
+        return i === index;
       });
-
-      if (el && el.focus) {
-        el.focus();
-      }
+      attemptFocus(el);
     },
     getItems: function getItems() {
       // Get all items
       return filterVisibles(selectAll(Selector.ITEM_SELECTOR, this.$refs.menu));
     },
     focusMenu: function focusMenu() {
-      try {
-        this.$refs.menu.focus();
-      } catch (_unused2) {}
+      attemptFocus(this.$refs.menu);
     },
     focusToggler: function focusToggler() {
       var _this4 = this;
 
       this.$nextTick(function () {
-        var toggler = _this4.toggler;
-
-        if (toggler && toggler.focus) {
-          toggler.focus();
-        }
+        attemptFocus(_this4.toggler);
       });
     }
   }

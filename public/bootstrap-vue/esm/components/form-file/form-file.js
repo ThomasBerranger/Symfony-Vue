@@ -12,6 +12,7 @@ import { isFile, isFunction, isUndefinedOrNull } from '../../utils/inspect';
 import { File } from '../../utils/safe-types';
 import { toString } from '../../utils/string';
 import { warn } from '../../utils/warn';
+import attrsMixin from '../../mixins/attrs';
 import formCustomMixin from '../../mixins/form-custom';
 import formMixin from '../../mixins/form';
 import formStateMixin from '../../mixins/form-state';
@@ -30,7 +31,7 @@ var isValidValue = function isValidValue(value) {
 
 export var BFormFile = /*#__PURE__*/Vue.extend({
   name: NAME,
-  mixins: [idMixin, formMixin, formStateMixin, formCustomMixin, normalizeSlotMixin],
+  mixins: [attrsMixin, idMixin, formMixin, formStateMixin, formCustomMixin, normalizeSlotMixin],
   inheritAttrs: false,
   model: {
     prop: 'value',
@@ -140,6 +141,21 @@ export var BFormFile = /*#__PURE__*/Vue.extend({
           return file.name;
         }).join(', ');
       }
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread(_objectSpread({}, this.bvAttrs), {}, {
+        type: 'file',
+        id: this.safeId(),
+        name: this.name,
+        disabled: this.disabled,
+        required: this.required,
+        form: this.form || null,
+        capture: this.capture || null,
+        accept: this.accept || null,
+        multiple: this.multiple,
+        webkitdirectory: this.directory,
+        'aria-required': this.required ? 'true' : null
+      });
     }
   },
   watch: {
@@ -324,19 +340,7 @@ export var BFormFile = /*#__PURE__*/Vue.extend({
         'custom-file-input': this.custom,
         focus: this.custom && this.hasFocus
       }, this.stateClass],
-      attrs: _objectSpread(_objectSpread({}, this.$attrs), {}, {
-        type: 'file',
-        id: this.safeId(),
-        name: this.name,
-        disabled: this.disabled,
-        required: this.required,
-        form: this.form || null,
-        capture: this.capture || null,
-        accept: this.accept || null,
-        multiple: this.multiple,
-        webkitdirectory: this.directory,
-        'aria-required': this.required ? 'true' : null
-      }),
+      attrs: this.computedAttrs,
       on: {
         change: this.onFileChange,
         focusin: this.focusHandler,

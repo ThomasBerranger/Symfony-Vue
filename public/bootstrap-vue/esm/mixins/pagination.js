@@ -1,6 +1,6 @@
 import KeyCodes from '../utils/key-codes';
 import range from '../utils/range';
-import { isVisible, isDisabled, selectAll, getAttr } from '../utils/dom';
+import { attemptFocus, getActiveElement, getAttr, isDisabled, isVisible, selectAll } from '../utils/dom';
 import { isFunction, isNull } from '../utils/inspect';
 import { mathFloor, mathMax, mathMin } from '../utils/math';
 import { toInteger } from '../utils/number';
@@ -407,9 +407,6 @@ export default {
         return isVisible(btn);
       });
     },
-    setBtnFocus: function setBtnFocus(btn) {
-      btn.focus();
-    },
     focusCurrent: function focusCurrent() {
       var _this2 = this;
 
@@ -419,9 +416,7 @@ export default {
           return toInteger(getAttr(el, 'aria-posinset'), 0) === _this2.computedCurrentPage;
         });
 
-        if (btn && btn.focus) {
-          _this2.setBtnFocus(btn);
-        } else {
+        if (!attemptFocus(btn)) {
           // Fallback if current page is not in button list
           _this2.focusFirst();
         }
@@ -436,9 +431,7 @@ export default {
           return !isDisabled(el);
         });
 
-        if (btn && btn.focus && btn !== document.activeElement) {
-          _this3.setBtnFocus(btn);
-        }
+        attemptFocus(btn);
       });
     },
     focusLast: function focusLast() {
@@ -450,9 +443,7 @@ export default {
           return !isDisabled(el);
         });
 
-        if (btn && btn.focus && btn !== document.activeElement) {
-          _this4.setBtnFocus(btn);
-        }
+        attemptFocus(btn);
       });
     },
     focusPrev: function focusPrev() {
@@ -462,10 +453,10 @@ export default {
       this.$nextTick(function () {
         var buttons = _this5.getButtons();
 
-        var idx = buttons.indexOf(document.activeElement);
+        var index = buttons.indexOf(getActiveElement());
 
-        if (idx > 0 && !isDisabled(buttons[idx - 1]) && buttons[idx - 1].focus) {
-          _this5.setBtnFocus(buttons[idx - 1]);
+        if (index > 0 && !isDisabled(buttons[index - 1])) {
+          attemptFocus(buttons[index - 1]);
         }
       });
     },
@@ -476,11 +467,10 @@ export default {
       this.$nextTick(function () {
         var buttons = _this6.getButtons();
 
-        var idx = buttons.indexOf(document.activeElement);
-        var cnt = buttons.length - 1;
+        var index = buttons.indexOf(getActiveElement());
 
-        if (idx < cnt && !isDisabled(buttons[idx + 1]) && buttons[idx + 1].focus) {
-          _this6.setBtnFocus(buttons[idx + 1]);
+        if (index < buttons.length - 1 && !isDisabled(buttons[index + 1])) {
+          attemptFocus(buttons[index + 1]);
         }
       });
     }

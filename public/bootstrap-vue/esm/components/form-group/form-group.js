@@ -7,7 +7,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 import memoize from '../../utils/memoize';
 import { arrayIncludes } from '../../utils/array';
 import { getBreakpointsUpCached } from '../../utils/config';
-import { select, selectAll, isVisible, setAttr, removeAttr, getAttr } from '../../utils/dom';
+import { select, selectAll, isVisible, setAttr, removeAttr, getAttr, attemptFocus } from '../../utils/dom';
 import { isBrowser } from '../../utils/env';
 import { isBoolean } from '../../utils/inspect';
 import { toInteger } from '../../utils/number';
@@ -357,13 +357,10 @@ export var BFormGroup = {
         return;
       }
 
-      var inputs = selectAll(SELECTOR, this.$refs.content).filter(isVisible);
+      var inputs = selectAll(SELECTOR, this.$refs.content).filter(isVisible); // If only a single input, focus it, emulating label behaviour
 
-      if (inputs && inputs.length === 1 && inputs[0].focus) {
-        // if only a single input, focus it, emulating label behaviour
-        try {
-          inputs[0].focus();
-        } catch (_unused) {}
+      if (inputs && inputs.length === 1) {
+        attemptFocus(inputs[0]);
       }
     },
     setInputDescribedBy: function setInputDescribedBy(add, remove) {

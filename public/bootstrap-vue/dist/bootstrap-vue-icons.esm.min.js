@@ -1,5 +1,5 @@
 /*!
- * BootstrapVue 2.13.1
+ * BootstrapVue 2.14.0
  *
  * @link https://bootstrap-vue.org
  * @source https://github.com/bootstrap-vue/bootstrap-vue

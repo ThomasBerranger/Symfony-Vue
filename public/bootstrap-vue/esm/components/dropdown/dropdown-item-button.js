@@ -5,6 +5,7 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
+import attrsMixin from '../../mixins/attrs';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 export var props = {
   active: {
@@ -31,7 +32,7 @@ export var props = {
 
 export var BDropdownItemButton = /*#__PURE__*/Vue.extend({
   name: 'BDropdownItemButton',
-  mixins: [normalizeSlotMixin],
+  mixins: [attrsMixin, normalizeSlotMixin],
   inheritAttrs: false,
   inject: {
     bvDropdown: {
@@ -39,6 +40,15 @@ export var BDropdownItemButton = /*#__PURE__*/Vue.extend({
     }
   },
   props: props,
+  computed: {
+    computedAttrs: function computedAttrs() {
+      return _objectSpread(_objectSpread({}, this.bvAttrs), {}, {
+        role: 'menuitem',
+        type: 'button',
+        disabled: this.disabled
+      });
+    }
+  },
   methods: {
     closeDropdown: function closeDropdown() {
       if (this.bvDropdown) {
@@ -60,11 +70,7 @@ export var BDropdownItemButton = /*#__PURE__*/Vue.extend({
     }, [h('button', {
       staticClass: 'dropdown-item',
       class: [this.buttonClass, (_ref = {}, _defineProperty(_ref, this.activeClass, this.active), _defineProperty(_ref, "text-".concat(this.variant), this.variant && !(this.active || this.disabled)), _ref)],
-      attrs: _objectSpread(_objectSpread({}, this.$attrs), {}, {
-        role: 'menuitem',
-        type: 'button',
-        disabled: this.disabled
-      }),
+      attrs: this.computedAttrs,
       on: {
         click: this.onClick
       },

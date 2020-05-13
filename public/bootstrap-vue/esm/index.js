@@ -1,5 +1,5 @@
 /*!
- * BootstrapVue 2.13.1
+ * BootstrapVue 2.14.0
  *
  * @link https://bootstrap-vue.org
  * @source https://github.com/bootstrap-vue/bootstrap-vue
@@ -65,7 +65,8 @@ export { AspectPlugin } from './components/aspect';
 export { BAspect } from './components/aspect/aspect'; // export * from './components/avatar'
 
 export { AvatarPlugin } from './components/avatar';
-export { BAvatar } from './components/avatar/avatar'; // export * from './components/badge'
+export { BAvatar } from './components/avatar/avatar';
+export { BAvatarGroup } from './components/avatar/avatar-group'; // export * from './components/badge'
 
 export { BadgePlugin } from './components/badge';
 export { BBadge } from './components/badge/badge'; // export * from './components/breadcrumb'

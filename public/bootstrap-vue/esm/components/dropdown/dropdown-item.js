@@ -6,13 +6,14 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 import Vue from '../../utils/vue';
 import { requestAF } from '../../utils/dom';
+import attrsMixin from '../../mixins/attrs';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 import { BLink, propsFactory as linkPropsFactory } from '../link/link';
 export var props = linkPropsFactory(); // @vue/component
 
 export var BDropdownItem = /*#__PURE__*/Vue.extend({
   name: 'BDropdownItem',
-  mixins: [normalizeSlotMixin],
+  mixins: [attrsMixin, normalizeSlotMixin],
   inheritAttrs: false,
   inject: {
     bvDropdown: {
@@ -29,6 +30,13 @@ export var BDropdownItem = /*#__PURE__*/Vue.extend({
       default: null
     }
   }),
+  computed: {
+    computedAttrs: function computedAttrs() {
+      return _objectSpread(_objectSpread({}, this.bvAttrs), {}, {
+        role: 'menuitem'
+      });
+    }
+  },
   methods: {
     closeDropdown: function closeDropdown() {
       var _this = this;
@@ -54,9 +62,7 @@ export var BDropdownItem = /*#__PURE__*/Vue.extend({
       props: this.$props,
       staticClass: 'dropdown-item',
       class: [this.linkClass, _defineProperty({}, "text-".concat(this.variant), this.variant && !(this.active || this.disabled))],
-      attrs: _objectSpread(_objectSpread({}, this.$attrs), {}, {
-        role: 'menuitem'
-      }),
+      attrs: this.computedAttrs,
       on: {
         click: this.onClick
       },

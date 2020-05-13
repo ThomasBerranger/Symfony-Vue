@@ -6,23 +6,25 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 import Vue from '../../utils/vue';
 import { arrayIncludes } from '../../utils/array';
+import { attemptBlur } from '../../utils/dom';
 import { eventOn, eventOff, eventOnOff } from '../../utils/events';
-import idMixin from '../../mixins/id';
 import formMixin from '../../mixins/form';
+import formSelectionMixin from '../../mixins/form-selection';
 import formSizeMixin from '../../mixins/form-size';
 import formStateMixin from '../../mixins/form-state';
 import formTextMixin from '../../mixins/form-text';
-import formSelectionMixin from '../../mixins/form-selection';
-import formValidityMixin from '../../mixins/form-validity'; // Valid supported input types
+import formValidityMixin from '../../mixins/form-validity';
+import idMixin from '../../mixins/id';
+import listenersMixin from '../../mixins/listeners'; // Valid supported input types
 
 var TYPES = ['text', 'password', 'email', 'number', 'url', 'tel', 'search', 'range', 'color', 'date', 'time', 'datetime', 'datetime-local', 'month', 'week']; // @vue/component
 
 export var BFormInput = /*#__PURE__*/Vue.extend({
   name: 'BFormInput',
-  mixins: [idMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
+  // Mixin order is important!
+  mixins: [listenersMixin, idMixin, formMixin, formSizeMixin, formStateMixin, formTextMixin, formSelectionMixin, formValidityMixin],
   props: {
-    // value prop defined in form-text mixin
-    // value: { },
+    // `value` prop is defined in form-text mixin
     type: {
       type: String,
       default: 'text',
@@ -31,7 +33,8 @@ export var BFormInput = /*#__PURE__*/Vue.extend({
       }
     },
     noWheel: {
-      // Disable mousewheel to prevent wheel from changing values (i.e. number/date).
+      // Disable mousewheel to prevent wheel from
+      // changing values (i.e. number/date)
       type: Boolean,
       default: false
     },
@@ -56,6 +59,39 @@ export var BFormInput = /*#__PURE__*/Vue.extend({
     localType: function localType() {
       // We only allow certain types
       return arrayIncludes(TYPES, this.type) ? this.type : 'text';
+    },
+    computedAttrs: function computedAttrs() {
+      var type = this.localType,
+          disabled = this.disabled,
+          placeholder = this.placeholder,
+          required = this.required,
+          min = this.min,
+          max = this.max,
+          step = this.step;
+      return {
+        id: this.safeId(),
+        name: this.name || null,
+        form: this.form || null,
+        type: type,
+        disabled: disabled,
+        placeholder: placeholder,
+        required: required,
+        autocomplete: this.autocomplete || null,
+        readonly: this.readonly || this.plaintext,
+        min: min,
+        max: max,
+        step: step,
+        list: type !== 'password' ? this.list : null,
+        'aria-required': required ? 'true' : null,
+        'aria-invalid': this.computedAriaInvalid
+      };
+    },
+    computedListeners: function computedListeners() {
+      return _objectSpread(_objectSpread({}, this.bvListeners), {}, {
+        input: this.onInput,
+        change: this.onChange,
+        blur: this.onBlur
+      });
     }
   },
   watch: {
@@ -105,45 +141,18 @@ export var BFormInput = /*#__PURE__*/Vue.extend({
     },
     stopWheel: function stopWheel(evt) {
       evt.preventDefault();
-      this.$el.blur();
+      attemptBlur(this.$el);
     }
   },
   render: function render(h) {
-    var self = this;
     return h('input', {
       ref: 'input',
-      class: self.computedClass,
-      directives: [{
-        name: 'model',
-        rawName: 'v-model',
-        value: self.localValue,
-        expression: 'localValue'
-      }],
-      attrs: {
-        id: self.safeId(),
-        name: self.name,
-        form: self.form || null,
-        type: self.localType,
-        disabled: self.disabled,
-        placeholder: self.placeholder,
-        required: self.required,
-        autocomplete: self.autocomplete || null,
-        readonly: self.readonly || self.plaintext,
-        min: self.min,
-        max: self.max,
-        step: self.step,
-        list: self.localType !== 'password' ? self.list : null,
-        'aria-required': self.required ? 'true' : null,
-        'aria-invalid': self.computedAriaInvalid
-      },
+      class: this.computedClass,
+      attrs: this.computedAttrs,
       domProps: {
-        value: self.localValue
+        value: this.localValue
       },
-      on: _objectSpread(_objectSpread({}, self.$listeners), {}, {
-        input: self.onInput,
-        change: self.onChange,
-        blur: self.onBlur
-      })
+      on: this.computedListeners
     });
   }
 });

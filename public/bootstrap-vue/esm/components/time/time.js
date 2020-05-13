@@ -25,7 +25,7 @@ import looseEqual from '../../utils/loose-equal';
 import { concat } from '../../utils/array';
 import { getComponentConfig } from '../../utils/config';
 import { createDate, createDateFormatter } from '../../utils/date';
-import { contains, requestAF } from '../../utils/dom';
+import { attemptBlur, attemptFocus, contains, getActiveElement, requestAF } from '../../utils/dom';
 import { isNull, isUndefinedOrNull } from '../../utils/inspect';
 import { isLocaleRTL } from '../../utils/locale';
 import { toInteger } from '../../utils/number';
@@ -455,19 +455,17 @@ export var BTime = /*#__PURE__*/Vue.extend({
     // Public methods
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          // We focus the first spin button
-          this.$refs.spinners[0].focus();
-        } catch (_unused) {}
+        // We focus the first spin button
+        attemptFocus(this.$refs.spinners[0]);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          if (contains(this.$el, document.activeElement)) {
-            document.activeElement.blur();
-          }
-        } catch (_unused2) {}
+        var activeElement = getActiveElement();
+
+        if (contains(this.$el, activeElement)) {
+          attemptBlur(activeElement);
+        }
       }
     },
     // Formatters for the spin buttons
@@ -521,10 +519,7 @@ export var BTime = /*#__PURE__*/Vue.extend({
         }).indexOf(true);
         index = index + (keyCode === LEFT ? -1 : 1);
         index = index >= spinners.length ? 0 : index < 0 ? spinners.length - 1 : index;
-
-        try {
-          spinners[index].focus();
-        } catch (_unused3) {}
+        attemptFocus(spinners[index]);
       }
     },
     setLive: function setLive(on) {

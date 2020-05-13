@@ -1,7 +1,7 @@
 import Vue from '../../utils/vue';
 import looseEqual from '../../utils/loose-equal';
 import { getComponentConfig } from '../../utils/config';
-import { requestAF } from '../../utils/dom';
+import { attemptBlur, requestAF } from '../../utils/dom';
 import { isBrowser } from '../../utils/env';
 import { isArray, isUndefined, isFunction, isObject } from '../../utils/inspect';
 import { mathMax } from '../../utils/math';
@@ -164,13 +164,11 @@ export var BPaginationNav = /*#__PURE__*/Vue.extend({
         _this5.$emit('change', pageNum);
       });
       this.$nextTick(function () {
-        // Done in a nextTick() to ensure rendering complete
-        try {
-          // Emulate native link click page reloading behaviour by blurring the
-          // paginator and returning focus to the document
-          var target = evt.currentTarget || evt.target;
-          target.blur();
-        } catch (e) {}
+        // Emulate native link click page reloading behaviour by blurring the
+        // paginator and returning focus to the document
+        // Done in a `nextTick()` to ensure rendering complete
+        var target = evt.currentTarget || evt.target;
+        attemptBlur(target);
       });
     },
     getPageInfo: function getPageInfo(pageNum) {

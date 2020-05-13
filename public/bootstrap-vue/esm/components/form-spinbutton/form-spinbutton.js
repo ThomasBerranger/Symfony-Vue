@@ -5,16 +5,18 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 import Vue from '../../utils/vue';
+import KeyCodes from '../../utils/key-codes';
+import identity from '../../utils/identity';
 import { arrayIncludes, concat } from '../../utils/array';
 import { getComponentConfig } from '../../utils/config';
+import { attemptBlur, attemptFocus } from '../../utils/dom';
 import { eventOnOff } from '../../utils/events';
 import { isFunction, isNull } from '../../utils/inspect';
 import { isLocaleRTL } from '../../utils/locale';
 import { mathFloor, mathMax, mathPow, mathRound } from '../../utils/math';
 import { toFloat, toInteger } from '../../utils/number';
 import { toString } from '../../utils/string';
-import identity from '../../utils/identity';
-import KeyCodes from '../../utils/key-codes';
+import attrsMixin from '../../mixins/attrs';
 import idMixin from '../../mixins/id';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
 import { BIconPlus, BIconDash } from '../../icons/icons'; // --- Constants ---
@@ -42,7 +44,8 @@ var DEFAULT_REPEAT_MULTIPLIER = 4; // --- BFormSpinbutton ---
 
 export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
   name: NAME,
-  mixins: [idMixin, normalizeSlotMixin],
+  // Mixin order is important!
+  mixins: [attrsMixin, idMixin, normalizeSlotMixin],
   inheritAttrs: false,
   props: {
     value: {
@@ -160,6 +163,18 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     };
   },
   computed: {
+    spinId: function spinId() {
+      return this.safeId();
+    },
+    computedInline: function computedInline() {
+      return this.inline && !this.vertical;
+    },
+    computedReadonly: function computedReadonly() {
+      return this.readonly && !this.disabled;
+    },
+    computedRequired: function computedRequired() {
+      return this.required && !this.computedReadonly && !this.disabled;
+    },
     computedStep: function computedStep() {
       return toFloat(this.step, DEFAULT_STEP);
     },
@@ -220,6 +235,46 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       }); // Return the format method reference
 
       return nf.format;
+    },
+    computedFormatter: function computedFormatter() {
+      return isFunction(this.formatterFn) ? this.formatterFn : this.defaultFormatter;
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread(_objectSpread({}, this.bvAttrs), {}, {
+        role: 'group',
+        lang: this.computedLocale,
+        tabindex: this.disabled ? null : '-1',
+        title: this.ariaLabel
+      });
+    },
+    computedSpinAttrs: function computedSpinAttrs() {
+      var spinId = this.spinId,
+          value = this.localValue,
+          required = this.computedRequired,
+          disabled = this.disabled,
+          state = this.state,
+          computedFormatter = this.computedFormatter;
+      var hasValue = !isNull(value);
+      return _objectSpread(_objectSpread({
+        dir: this.computedRTL ? 'rtl' : 'ltr'
+      }, this.bvAttrs), {}, {
+        id: spinId,
+        role: 'spinbutton',
+        tabindex: disabled ? null : '0',
+        'aria-live': 'off',
+        'aria-label': this.ariaLabel || null,
+        'aria-controls': this.ariaControls || null,
+        // TODO: May want to check if the value is in range
+        'aria-invalid': state === false || !hasValue && required ? 'true' : null,
+        'aria-required': required ? 'true' : null,
+        // These attrs are required for role spinbutton
+        'aria-valuemin': toString(this.computedMin),
+        'aria-valuemax': toString(this.computedMax),
+        // These should be `null` if the value is out of range
+        // They must also be non-existent attrs if the value is out of range or `null`
+        'aria-valuenow': hasValue ? value : null,
+        'aria-valuetext': hasValue ? computedFormatter(value) : null
+      });
     }
   },
   watch: {
@@ -260,16 +315,12 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     // --- Public methods ---
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.$refs.spinner.focus();
-        } catch (_unused) {}
+        attemptFocus(this.$refs.spinner);
       }
     },
     blur: function blur() {
       if (!this.disabled) {
-        try {
-          this.$refs.spinner.blur();
-        } catch (_unused2) {}
+        attemptBlur(this.$refs.spinner);
       }
     },
     // --- Private methods ---
@@ -447,7 +498,7 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       try {
         eventOnOff(on, document.body, 'mouseup', this.onMouseup, false);
         eventOnOff(on, document.body, 'touchend', this.onMouseup, false);
-      } catch (_unused3) {}
+      } catch (_unused) {}
     },
     resetTimers: function resetTimers() {
       clearTimeout(this.$_autoDelayTimer);
@@ -463,17 +514,16 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     var _this2 = this,
         _class;
 
-    var spinId = this.safeId();
-    var value = this.localValue;
-    var isVertical = this.vertical;
-    var isInline = this.inline && !isVertical;
-    var isDisabled = this.disabled;
-    var isReadonly = this.readonly && !isDisabled;
-    var isRequired = this.required && !isReadonly && !isDisabled;
-    var state = this.state;
-    var size = this.size;
+    var spinId = this.spinId,
+        value = this.localValue,
+        inline = this.computedInline,
+        readonly = this.computedReadonly,
+        vertical = this.vertical,
+        disabled = this.disabled,
+        state = this.state,
+        size = this.size,
+        computedFormatter = this.computedFormatter;
     var hasValue = !isNull(value);
-    var formatter = isFunction(this.formatterFn) ? this.formatterFn : this.defaultFormatter;
 
     var makeButton = function makeButton(stepper, label, IconCmp, keyRef, shortcut, btnDisabled, slotName) {
       var $icon = h(IconCmp, {
@@ -489,15 +539,13 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       };
 
       var handler = function handler(evt) {
-        if (!isDisabled && !isReadonly) {
+        if (!disabled && !readonly) {
           evt.preventDefault();
 
-          _this2.setMouseup(true);
+          _this2.setMouseup(true); // Since we `preventDefault()`, we must manually focus the button
 
-          try {
-            // Since we `preventDefault()`, we must manually focus the button
-            evt.currentTarget.focus();
-          } catch (_unused4) {}
+
+          attemptFocus(evt.currentTarget);
 
           _this2.handleStepRepeat(evt, stepper);
         }
@@ -508,13 +556,13 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
         ref: keyRef,
         staticClass: 'btn btn-sm border-0 rounded-0',
         class: {
-          'py-0': !isVertical
+          'py-0': !vertical
         },
         attrs: {
           tabindex: '-1',
           type: 'button',
-          disabled: isDisabled || isReadonly || btnDisabled,
-          'aria-disabled': isDisabled || isReadonly || btnDisabled ? 'true' : null,
+          disabled: disabled || readonly || btnDisabled,
+          'aria-disabled': disabled || readonly || btnDisabled ? 'true' : null,
           'aria-controls': spinId,
           'aria-label': label || null,
           'aria-keyshortcuts': shortcut || null
@@ -531,7 +579,7 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
     var $decrement = makeButton(this.stepDown, this.labelDecrement, BIconDash, 'dec', 'ArrowDown', false, 'decrement');
     var $hidden = h();
 
-    if (this.name && !isDisabled) {
+    if (this.name && !disabled) {
       $hidden = h('input', {
         key: 'hidden',
         attrs: {
@@ -550,48 +598,24 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
       key: 'output',
       staticClass: 'flex-grow-1',
       class: {
-        'd-flex': isVertical,
-        'align-self-center': !isVertical,
-        'align-items-center': isVertical,
-        'border-top': isVertical,
-        'border-bottom': isVertical,
-        'border-left': !isVertical,
-        'border-right': !isVertical
+        'd-flex': vertical,
+        'align-self-center': !vertical,
+        'align-items-center': vertical,
+        'border-top': vertical,
+        'border-bottom': vertical,
+        'border-left': !vertical,
+        'border-right': !vertical
       },
-      attrs: _objectSpread(_objectSpread({
-        dir: this.computedRTL ? 'rtl' : 'ltr'
-      }, this.$attrs), {}, {
-        id: spinId,
-        role: 'spinbutton',
-        tabindex: isDisabled ? null : '0',
-        'aria-live': 'off',
-        'aria-label': this.ariaLabel || null,
-        'aria-controls': this.ariaControls || null,
-        // TODO: May want to check if the value is in range
-        'aria-invalid': state === false || !hasValue && isRequired ? 'true' : null,
-        'aria-required': isRequired ? 'true' : null,
-        // These attrs are required for role spinbutton
-        'aria-valuemin': toString(this.computedMin),
-        'aria-valuemax': toString(this.computedMax),
-        // These should be `null` if the value is out of range
-        // They must also be non-existent attrs if the value is out of range or `null`
-        'aria-valuenow': hasValue ? value : null,
-        'aria-valuetext': hasValue ? formatter(value) : null
-      })
-    }, [h('bdi', hasValue ? formatter(value) : this.placeholder || '')]);
+      attrs: this.computedSpinAttrs
+    }, [h('bdi', hasValue ? computedFormatter(value) : this.placeholder || '')]);
     return h('div', {
       staticClass: 'b-form-spinbutton form-control',
       class: (_class = {
-        disabled: isDisabled,
-        readonly: isReadonly,
+        disabled: disabled,
+        readonly: readonly,
         focus: this.hasFocus
-      }, _defineProperty(_class, "form-control-".concat(size), !!size), _defineProperty(_class, 'd-inline-flex', isInline || isVertical), _defineProperty(_class, 'd-flex', !isInline && !isVertical), _defineProperty(_class, 'align-items-stretch', !isVertical), _defineProperty(_class, 'flex-column', isVertical), _defineProperty(_class, 'is-valid', state === true), _defineProperty(_class, 'is-invalid', state === false), _class),
-      attrs: {
-        role: 'group',
-        lang: this.computedLocale,
-        tabindex: isDisabled ? null : '-1',
-        title: this.ariaLabel
-      },
+      }, _defineProperty(_class, "form-control-".concat(size), !!size), _defineProperty(_class, 'd-inline-flex', inline || vertical), _defineProperty(_class, 'd-flex', !inline && !vertical), _defineProperty(_class, 'align-items-stretch', !vertical), _defineProperty(_class, 'flex-column', vertical), _defineProperty(_class, 'is-valid', state === true), _defineProperty(_class, 'is-invalid', state === false), _class),
+      attrs: this.computedAttrs,
       on: {
         keydown: this.onKeydown,
         keyup: this.onKeyup,
@@ -599,6 +623,6 @@ export var BFormSpinbutton = /*#__PURE__*/Vue.extend({
         '!focus': this.onFocusBlur,
         '!blur': this.onFocusBlur
       }
-    }, isVertical ? [$increment, $hidden, $spin, $decrement] : [$decrement, $hidden, $spin, $increment]);
+    }, vertical ? [$increment, $hidden, $spin, $decrement] : [$decrement, $hidden, $spin, $increment]);
   }
 });

@@ -3,7 +3,7 @@ import KeyCodes from '../../utils/key-codes';
 import noop from '../../utils/noop';
 import observeDom from '../../utils/observe-dom';
 import { getComponentConfig } from '../../utils/config';
-import { selectAll, reflow, addClass, removeClass, setAttr } from '../../utils/dom';
+import { addClass, getActiveElement, reflow, removeClass, selectAll, setAttr } from '../../utils/dom';
 import { isBrowser, hasTouchSupport, hasPointerEventSupport } from '../../utils/env';
 import { EVENT_OPTIONS_NO_CAPTURE, eventOn, eventOff } from '../../utils/events';
 import { isUndefined } from '../../utils/inspect';
@@ -316,7 +316,7 @@ export var BCarousel = /*#__PURE__*/Vue.extend({
     restart: function restart()
     /* istanbul ignore next: difficult to test */
     {
-      if (!this.$el.contains(document.activeElement)) {
+      if (!this.$el.contains(getActiveElement())) {
         this.start();
       }
     },

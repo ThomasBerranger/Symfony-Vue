@@ -1,3 +1,4 @@
+import { attemptBlur, attemptFocus } from '../utils/dom';
 import { isFunction } from '../utils/inspect';
 import { mathMax } from '../utils/math';
 import { toInteger, toFloat } from '../utils/number';
@@ -264,13 +265,13 @@ export default {
     focus: function focus() {
       // For external handler that may want a focus method
       if (!this.disabled) {
-        this.$el.focus();
+        attemptFocus(this.$el);
       }
     },
     blur: function blur() {
       // For external handler that may want a blur method
       if (!this.disabled) {
-        this.$el.blur();
+        attemptBlur(this.$el);
       }
     }
   }

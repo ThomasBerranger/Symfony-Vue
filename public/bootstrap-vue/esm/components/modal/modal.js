@@ -11,13 +11,14 @@ import identity from '../../utils/identity';
 import observeDom from '../../utils/observe-dom';
 import { arrayIncludes, concat } from '../../utils/array';
 import { getComponentConfig } from '../../utils/config';
-import { closest, contains, getTabables, isVisible, requestAF, select } from '../../utils/dom';
+import { attemptFocus, closest, contains, getActiveElement as _getActiveElement, getTabables, requestAF, select } from '../../utils/dom';
 import { isBrowser } from '../../utils/env';
 import { EVENT_OPTIONS_NO_CAPTURE, eventOn, eventOff } from '../../utils/events';
 import { stripTags } from '../../utils/html';
 import { isString, isUndefinedOrNull } from '../../utils/inspect';
 import { HTMLElement } from '../../utils/safe-types';
 import { BTransporterSingle } from '../../utils/transporter';
+import attrsMixin from '../../mixins/attrs';
 import idMixin from '../../mixins/id';
 import listenOnDocumentMixin from '../../mixins/listen-on-document';
 import listenOnRootMixin from '../../mixins/listen-on-root';
@@ -38,20 +39,7 @@ var OBSERVER_CONFIG = {
   characterData: true,
   attributes: true,
   attributeFilter: ['style', 'class']
-}; // --- Utility methods ---
-// Attempt to focus an element, and return true if successful
-
-var attemptFocus = function attemptFocus(el) {
-  if (el && isVisible(el) && el.focus) {
-    try {
-      el.focus();
-    } catch (_unused) {}
-  } // If the element has focus, then return true
-
-
-  return document.activeElement === el;
 }; // --- Props ---
-
 
 export var props = {
   size: {
@@ -308,7 +296,7 @@ export var props = {
 
 export var BModal = /*#__PURE__*/Vue.extend({
   name: NAME,
-  mixins: [idMixin, listenOnDocumentMixin, listenOnRootMixin, listenOnWindowMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
+  mixins: [attrsMixin, idMixin, listenOnDocumentMixin, listenOnRootMixin, listenOnWindowMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
   inheritAttrs: false,
   model: {
     prop: 'visible',
@@ -343,6 +331,30 @@ export var BModal = /*#__PURE__*/Vue.extend({
     };
   },
   computed: {
+    modalId: function modalId() {
+      return this.safeId();
+    },
+    modalOuterId: function modalOuterId() {
+      return this.safeId('__BV_modal_outer_');
+    },
+    modalHeaderId: function modalHeaderId() {
+      return this.safeId('__BV_modal_header_');
+    },
+    modalBodyId: function modalBodyId() {
+      return this.safeId('__BV_modal_body_');
+    },
+    modalTitleId: function modalTitleId() {
+      return this.safeId('__BV_modal_title_');
+    },
+    modalContentId: function modalContentId() {
+      return this.safeId('__BV_modal_content_');
+    },
+    modalFooterId: function modalFooterId() {
+      return this.safeId('__BV_modal_footer_');
+    },
+    modalBackdropId: function modalBackdropId() {
+      return this.safeId('__BV_modal_backdrop_');
+    },
     modalClasses: function modalClasses() {
       return [{
         fade: !this.noFade,
@@ -403,6 +415,28 @@ export var BModal = /*#__PURE__*/Vue.extend({
     computeIgnoreEnforceFocusSelector: function computeIgnoreEnforceFocusSelector() {
       // Normalize to an single selector with selectors separated by `,`
       return concat(this.ignoreEnforceFocusSelector).filter(identity).join(',').trim();
+    },
+    computedAttrs: function computedAttrs() {
+      // If the parent has a scoped style attribute, and the modal
+      // is portalled, add the scoped attribute to the modal wrapper
+      var scopedStyleAttrs = !this.static ? this.scopedStyleAttrs : {};
+      return _objectSpread(_objectSpread(_objectSpread({}, scopedStyleAttrs), this.bvAttrs), {}, {
+        id: this.modalOuterId
+      });
+    },
+    computedModalAttrs: function computedModalAttrs() {
+      var isVisible = this.isVisible,
+          ariaLabel = this.ariaLabel;
+      return {
+        id: this.modalId,
+        role: 'dialog',
+        'aria-hidden': isVisible ? null : 'true',
+        'aria-modal': isVisible ? 'true' : null,
+        'aria-label': ariaLabel,
+        'aria-labelledby': this.hideHeader || ariaLabel || // TODO: Rename slot to `title` and deprecate `modal-title`
+        !(this.hasNormalizedSlot('modal-title') || this.titleHtml || this.title) ? null : this.modalTitleId,
+        'aria-describedby': this.modalBodyId
+      };
     }
   },
   watch: {
@@ -465,7 +499,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
       }, options), {}, {
         // Options that can't be overridden
         vueTarget: this,
-        componentId: this.safeId()
+        componentId: this.modalId
       }));
     },
     // Public method to show modal
@@ -565,23 +599,18 @@ export var BModal = /*#__PURE__*/Vue.extend({
     },
     // Private method to get the current document active element
     getActiveElement: function getActiveElement() {
-      if (isBrowser) {
-        var activeElement = document.activeElement; // Note: On IE 11, `document.activeElement` may be null.
-        // So we test it for truthiness first.
-        // https://github.com/bootstrap-vue/bootstrap-vue/issues/3206
-        // Returning focus to document.body may cause unwanted scrolls, so we
-        // exclude setting focus on body
+      // Returning focus to `document.body` may cause unwanted scrolls,
+      // so we exclude setting focus on body
+      var activeElement = _getActiveElement(isBrowser ? [document.body] : []); // Preset the fallback return focus value if it is not set
+      // `document.activeElement` should be the trigger element that was clicked or
+      // in the case of using the v-model, which ever element has current focus
+      // Will be overridden by some commands such as toggle, etc.
+      // Note: On IE 11, `document.activeElement` may be `null`
+      // So we test it for truthiness first
+      // https://github.com/bootstrap-vue/bootstrap-vue/issues/3206
 
-        if (activeElement && activeElement !== document.body && activeElement.focus) {
-          // Preset the fallback return focus value if it is not set
-          // `document.activeElement` should be the trigger element that was clicked or
-          // in the case of using the v-model, which ever element has current focus
-          // Will be overridden by some commands such as toggle, etc.
-          return activeElement;
-        }
-      }
 
-      return null;
+      return activeElement && activeElement.focus ? activeElement : null;
     },
     // Private method to finish showing modal
     doShow: function doShow() {
@@ -770,7 +799,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
       } // Otherwise focus the modal content container
 
 
-      content.focus({
+      attemptFocus(content, {
         preventScroll: true
       });
     },
@@ -785,18 +814,18 @@ export var BModal = /*#__PURE__*/Vue.extend({
     },
     // Root listener handlers
     showHandler: function showHandler(id, triggerEl) {
-      if (id === this.safeId()) {
+      if (id === this.modalId) {
         this.return_focus = triggerEl || this.getActiveElement();
         this.show();
       }
     },
     hideHandler: function hideHandler(id) {
-      if (id === this.safeId()) {
+      if (id === this.modalId) {
         this.hide('event');
       }
     },
     toggleHandler: function toggleHandler(id, triggerEl) {
-      if (id === this.safeId()) {
+      if (id === this.modalId) {
         this.toggle(triggerEl);
       }
     },
@@ -898,7 +927,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
             staticClass: 'modal-title',
             class: this.titleClasses,
             attrs: {
-              id: this.safeId('__BV_modal_title_')
+              id: this.modalTitleId
             },
             domProps: domProps
           }, // TODO: Rename slot to `title` and deprecate `modal-title`
@@ -910,7 +939,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
           staticClass: 'modal-header',
           class: this.headerClasses,
           attrs: {
-            id: this.safeId('__BV_modal_header_')
+            id: this.modalHeaderId
           }
         }, [modalHeader]);
       } // Modal body
@@ -921,7 +950,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
         staticClass: 'modal-body',
         class: this.bodyClasses,
         attrs: {
-          id: this.safeId('__BV_modal_body_')
+          id: this.modalBodyId
         }
       }, this.normalizeSlot('default', this.slotScope)); // Modal footer
 
@@ -979,7 +1008,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
           staticClass: 'modal-footer',
           class: this.footerClasses,
           attrs: {
-            id: this.safeId('__BV_modal_footer_')
+            id: this.modalFooterId
           }
         }, [modalFooter]);
       } // Assemble modal content
@@ -990,8 +1019,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
         staticClass: 'modal-content',
         class: this.contentClass,
         attrs: {
-          role: 'document',
-          id: this.safeId('__BV_modal_content_'),
+          id: this.modalContentId,
           tabindex: '-1'
         }
       }, [header, body, footer]); // Tab trap to prevent page from scrolling to next element in
@@ -1036,16 +1064,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
           value: this.isVisible,
           expression: 'isVisible'
         }],
-        attrs: {
-          id: this.safeId(),
-          role: 'dialog',
-          'aria-hidden': this.isVisible ? null : 'true',
-          'aria-modal': this.isVisible ? 'true' : null,
-          'aria-label': this.ariaLabel,
-          'aria-labelledby': this.hideHeader || this.ariaLabel || // TODO: Rename slot to `title` and deprecate `modal-title`
-          !(this.hasNormalizedSlot('modal-title') || this.titleHtml || this.title) ? null : this.safeId('__BV_modal_title_'),
-          'aria-describedby': this.safeId('__BV_modal_body_')
-        },
+        attrs: this.computedModalAttrs,
         on: {
           keydown: this.onEsc,
           click: this.onClickOut
@@ -1080,7 +1099,7 @@ export var BModal = /*#__PURE__*/Vue.extend({
         backdrop = h('div', {
           staticClass: 'modal-backdrop',
           attrs: {
-            id: this.safeId('__BV_modal_backdrop_')
+            id: this.modalBackdropId
           }
         }, // TODO: Rename slot to `backdrop` and deprecate `modal-backdrop`
         [this.normalizeSlot('modal-backdrop')]);
@@ -1090,17 +1109,12 @@ export var BModal = /*#__PURE__*/Vue.extend({
         props: {
           noFade: this.noFade
         }
-      }, [backdrop]); // If the parent has a scoped style attribute, and the modal
-      // is portalled, add the scoped attribute to the modal wrapper
-
-      var scopedStyleAttrs = !this.static ? this.scopedStyleAttrs : {}; // Assemble modal and backdrop in an outer <div>
+      }, [backdrop]); // Assemble modal and backdrop in an outer <div>
 
       return h('div', {
         key: "modal-outer-".concat(this._uid),
         style: this.modalOuterStyle,
-        attrs: _objectSpread(_objectSpread(_objectSpread({}, scopedStyleAttrs), this.$attrs), {}, {
-          id: this.safeId('__BV_modal_outer_')
-        })
+        attrs: this.computedAttrs
       }, [modal, backdrop]);
     }
   },

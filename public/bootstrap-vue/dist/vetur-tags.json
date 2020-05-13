@@ -48,6 +48,17 @@
       "aria-label"
     ]
   },
+  "b-avatar-group": {
+    "description": "Avatars are typically used to display a user profile as a picture, an icon, or short text.",
+    "attributes": [
+      "variant",
+      "size",
+      "overlap",
+      "square",
+      "rounded",
+      "tag"
+    ]
+  },
   "b-badge": {
     "description": "Small and adaptive tag for adding context to just about any content.",
     "attributes": [

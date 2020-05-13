@@ -14,7 +14,7 @@ html {
   font-family: sans-serif;
   line-height: 1.15;
   -webkit-text-size-adjust: 100%;
-  -webkit-tap-highlight-color: rgba(73, 88, 103, 0); }
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }
 
 article, aside, figcaption, figure, footer, header, hgroup, main, nav, section {
   display: block; }
@@ -27,7 +27,7 @@ body {
   line-height: 1.5;
   color: #212529;
   text-align: left;
-  background-color: #f7f7ff; }
+  background-color: #fff; }
 
 [tabindex="-1"]:focus:not(:focus-visible) {
   outline: 0 !important; }
@@ -101,11 +101,11 @@ sup {
   top: -.5em; }
 
 a {
-  color: #577399;
+  color: #007bff;
   text-decoration: none;
   background-color: transparent; }
   a:hover {
-    color: #3b4e68;
+    color: #0056b3;
     text-decoration: underline; }
 
 a:not([href]) {

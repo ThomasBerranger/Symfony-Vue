@@ -1,4 +1,4 @@
-import { matches, select, isVisible, requestAF } from '../utils/dom';
+import { attemptFocus, isVisible, matches, requestAF, select } from '../utils/dom';
 var SELECTOR = 'input, textarea, select'; // @vue/component
 
 export default {
@@ -48,7 +48,7 @@ export default {
               el = select(SELECTOR, el);
             }
 
-            el && el.focus && el.focus();
+            attemptFocus(el);
           }
         });
       });

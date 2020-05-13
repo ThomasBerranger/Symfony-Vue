@@ -13,6 +13,7 @@ import { requestAF } from '../../utils/dom';
 import { EVENT_OPTIONS_NO_CAPTURE, eventOnOff } from '../../utils/events';
 import { mathMax } from '../../utils/math';
 import { toInteger } from '../../utils/number';
+import attrsMixin from '../../mixins/attrs';
 import idMixin from '../../mixins/id';
 import listenOnRootMixin from '../../mixins/listen-on-root';
 import normalizeSlotMixin from '../../mixins/normalize-slot';
@@ -121,7 +122,7 @@ export var props = {
 
 export var BToast = /*#__PURE__*/Vue.extend({
   name: NAME,
-  mixins: [idMixin, listenOnRootMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
+  mixins: [attrsMixin, idMixin, listenOnRootMixin, normalizeSlotMixin, scopedStyleAttrsMixin],
   inheritAttrs: false,
   model: {
     prop: 'visible',
@@ -168,6 +169,12 @@ export var BToast = /*#__PURE__*/Vue.extend({
         beforeLeave: this.onBeforeLeave,
         afterLeave: this.onAfterLeave
       };
+    },
+    computedAttrs: function computedAttrs() {
+      return _objectSpread(_objectSpread({}, this.bvAttrs), {}, {
+        id: this.safeId(),
+        tabindex: '0'
+      });
     }
   },
   watch: {
@@ -433,10 +440,7 @@ export var BToast = /*#__PURE__*/Vue.extend({
         ref: 'toast',
         staticClass: 'toast',
         class: this.toastClass,
-        attrs: _objectSpread(_objectSpread({}, this.$attrs), {}, {
-          tabindex: '0',
-          id: this.safeId()
-        })
+        attrs: this.computedAttrs
       }, [$header, $body]);
       return $toast;
     }

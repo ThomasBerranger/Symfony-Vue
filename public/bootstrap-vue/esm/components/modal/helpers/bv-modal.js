@@ -27,7 +27,7 @@ import { BModal, props as modalProps } from '../modal';
 import { concat } from '../../../utils/array';
 import { getComponentConfig } from '../../../utils/config';
 import { isUndefined, isFunction } from '../../../utils/inspect';
-import { assign, keys, omit, defineProperty, defineProperties, readonlyDescriptor } from '../../../utils/object';
+import { assign, defineProperties, defineProperty, hasOwnProperty, keys, omit, readonlyDescriptor } from '../../../utils/object';
 import { pluginFactory } from '../../../utils/plugins';
 import { warn, warnNotClient, warnNoPromiseSupport } from '../../../utils/warn'; // --- Constants ---
 
@@ -291,9 +291,8 @@ var plugin = function plugin(Vue) {
     }
   }); // Define our read-only `$bvModal` instance property
   // Placed in an if just in case in HMR mode
-  // eslint-disable-next-line no-prototype-builtins
 
-  if (!Vue.prototype.hasOwnProperty(PROP_NAME)) {
+  if (!hasOwnProperty(Vue.prototype, PROP_NAME)) {
     defineProperty(Vue.prototype, PROP_NAME, {
       get: function get() {
         /* istanbul ignore next */

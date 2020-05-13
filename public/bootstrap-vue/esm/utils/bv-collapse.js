@@ -74,7 +74,7 @@ export var BVCollapse = /*#__PURE__*/Vue.extend({
       on: TRANSITION_HANDLERS
     }, {
       props: props
-    }), // Note: `<tranition>` supports a single root element only
+    }), // Note: `<transition>` supports a single root element only
     children);
   }
 });

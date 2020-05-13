@@ -24,7 +24,7 @@ import identity from '../../utils/identity';
 import looseEqual from '../../utils/loose-equal';
 import { arrayIncludes, concat } from '../../utils/array';
 import { getComponentConfig } from '../../utils/config';
-import { matches, requestAF, select } from '../../utils/dom';
+import { attemptBlur, attemptFocus, matches, requestAF, select } from '../../utils/dom';
 import { isEvent, isFunction, isString } from '../../utils/inspect';
 import { escapeRegExp, toString, trim, trimLeft } from '../../utils/string';
 import idMixin from '../../mixins/id';
@@ -503,15 +503,13 @@ export var BFormTags = /*#__PURE__*/Vue.extend({
     // --- Public methods ---
     focus: function focus() {
       if (!this.disabled) {
-        try {
-          this.getInput().focus();
-        } catch (_unused) {}
+        attemptFocus(this.getInput());
       }
     },
     blur: function blur() {
-      try {
-        this.getInput().blur();
-      } catch (_unused2) {}
+      if (!this.disabled) {
+        attemptBlur(this.getInput());
+      }
     },
     // --- Private methods ---
     splitTags: function splitTags(newTag) {
