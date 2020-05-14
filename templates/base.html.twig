@@ -27,11 +27,11 @@
     <strong>We're sorry but this project doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
 </noscript>
 
-<section id="base">
+<section id="header">
 
     <header id="header" class="d-none d-md-block d-lg-block">
         <p id="headerTitle" class="title-font display-2">BroLight</p>
-        <a href="#siteContent"><b-icon-eject flip-v></b-icon-eject></a>
+        <a href="#mdNav"><b-icon-eject flip-v></b-icon-eject></a>
     </header>
 
     <nav id="mdNav" class="navbar justify-content-between bg-white" :class="{'fixed-top':isFixed}">
@@ -57,14 +57,11 @@
     </b-sidebar>
 </section>
 
-<section id="siteContent">
-    <br><br><br>
-    {% block body %}{% endblock %}
-</section>
+{% block body %}{% endblock %}
 
 <script>
     new Vue({
-        el: '#base',
+        el: '#header',
         delimiters: ['${', '}'],
         data: {
             isFixed: false
@@ -76,7 +73,7 @@
             let navTitle = document.getElementById('navTitle');
 
             window.document.onscroll = () => {
-                if (window.scrollY > mdNav.offsetTop && window.scrollY > header.offsetHeight){
+                if (window.scrollY > mdNav.offsetTop && window.scrollY > header.offsetHeight - mdNav.offsetHeight){
                     this.isFixed = true;
                 } else {
                     this.isFixed = false;
