@@ -13,7 +13,7 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Component\Serializer\SerializerInterface;
 
 /**
- * @Route("/user")
+ * @Route("/user", name="user_")
  */
 class UserController extends AbstractController
 {
@@ -25,7 +25,7 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Route("/me", name="user_show")
+     * @Route("/me", name="show")
      */
     public function show()
     {
@@ -33,7 +33,7 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Route("/edit/me", name="user_edit")
+     * @Route("/edit/me", name="edit")
      */
     public function edit()
     {

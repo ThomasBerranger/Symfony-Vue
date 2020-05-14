@@ -10,9 +10,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 /**
- * @Route("/api/user")
+ * @Route("/api/user", name="api_user_")
  */
 class UserController extends AbstractController
 {
@@ -22,7 +23,7 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Route("/", name="api_user_edit", methods={"PUT"})
+     * @Route("/", name="edit", methods={"PUT"})
      */
     public function edit(Request $request, SerializerInterface $serializer)
     {
@@ -44,7 +45,7 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Route("/watch", name="api_user_watch", methods={"POST"})
+     * @Route("/watch", name="watch", methods={"POST"})
      */
     public function watch(Request $request, SerializerInterface $serializer)
     {
@@ -64,6 +65,28 @@ class UserController extends AbstractController
                 'status' => 400,
                 'message' => $e->getMessage()
             ], 400);
+        }
+    }
+
+    /**
+     * @Route("/check_username/{username}", name="check_username", methods={"GET"})
+     */
+    public function checkUsername($username)
+    {
+        try {
+            $user = $this->getDoctrine()->getRepository(User::class)->findOneBy(['username' => $username]);
+
+            if ($user and $user != $this->getUser()) {
+                return $this->json([
+                    'isAlreadyUsed' => true,
+                ], 200);
+            } else {
+                return $this->json([
+                    'isAlreadyUsed' => false,
+                ], 200);
+            }
+        } catch (NotFoundResourceException $e) {
+            return $this->json($e, 404);
         }
     }
 }

@@ -4,45 +4,48 @@
 
 {% block body %}
 
-    <div id="userShow" class="col-12">
-        <h1>Edition de compte</h1>
+    <div id="userShow" class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <h1>Edition de compte</h1>
 
-        <h2>Bonjour ${ form.username } !</h2>
+            <h3 class="my-5">Bonjour ${ form.username } !</h3>
 
-        <b-form @submit="onSubmit" @reset="onReset">
-            <b-form-group
-                    id="input-group-1"
-                    label="Ton adresse email:"
-                    label-for="input-1"
-                    description="Cet email ne sera pas communiqué."
-            >
-                <b-form-input
-                        readonly
-                        id="input-1"
-                        v-model="form.email"
-                        type="email"
-                        required
-                        placeholder="Enter email"
-                ></b-form-input>
-            </b-form-group>
+            <b-form @submit.prevent="onSubmit" @reset.prevent="onReset">
+                <b-form-group
+                        id="input-group-1"
+                        label="Ton adresse email:"
+                        label-for="input-1"
+                        description="T'inquiète, ton email ne sera pas communiqué."
+                >
+                    <b-form-input
+                            readonly
+                            id="input-1"
+                            v-model="form.email"
+                            type="email"
+                            required
+                            placeholder="Enter email"
+                    ></b-form-input>
+                </b-form-group>
 
-            <b-form-group id="input-group-2" label="Ton pseudo:" label-for="input-2">
-                <b-form-input
-                        id="input-2"
-                        v-model="form.username"
-                        required
-                        placeholder="Enter username"
-                        :state="validation"
-                ></b-form-input>
-                <b-form-invalid-feedback :state="validation">
-                    Votre pseudo doit contenir entre 2 et 20 caractères.
-                </b-form-invalid-feedback>
-            </b-form-group>
+                <b-form-group id="input-group-2" label="Ton pseudo:" label-for="input-2">
+                    <b-form-input
+                            id="input-2"
+                            v-model="form.username"
+                            required
+                            placeholder="Enter username"
+                            :state="validation"
+                            v-on:keyup="usernameCheck"
+                    ></b-form-input>
+                    <b-form-invalid-feedback :state="validation">
+                        Votre pseudo doit contenir entre 2 et 20 caractères.
+                    </b-form-invalid-feedback>
+                </b-form-group>
 
-            <b-button type="submit" variant="primary">Submit</b-button>
-            <b-button type="reset" variant="info">Reset</b-button>
-        </b-form>
+                <b-button type="submit" variant="primary">Submit</b-button>
+                <b-button type="reset" variant="info">Reset</b-button>
+            </b-form>
 
+        </div>
     </div>
 {% endblock %}
 
@@ -64,9 +67,18 @@
                 }
             },
             methods: {
-                onSubmit: function(evt) {
-                    evt.preventDefault()
-                    console.log(this.form)
+                usernameCheck: function () {
+                    axios
+                        .get('{{ path('api_user_check_username', { 'username': 'replaceMe' }) }}'.replace('replaceMe', this.form.username))
+                        .then(
+                            response => {
+                                console.log(response.data.isAlreadyUsed)
+                            }, error => {
+                                console.log(error)
+                            }
+                        )
+                },
+                onSubmit: function() {
                     axios
                         .put('{{ path('api_user_edit') }}', this.form)
                         .then(
@@ -76,10 +88,8 @@
                                 console.log(error)
                             }
                         )
-
                 },
-                onReset: function(evt) {
-                    evt.preventDefault()
+                onReset: function() {
                     this.form = {
                         email: '{{ app.user.email }}',
                         username: '{{ app.user.username }}',
