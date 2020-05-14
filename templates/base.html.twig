@@ -43,7 +43,10 @@
         {% else %}
             <a href="{{ path('home') }}" class="title-link">BroLight</a>
         {% endif %}
-        <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-person></b-icon-person></a>
+        <div>
+            <a href="{{ path('user_edit') }}" class="btn btn-light"><b-icon-gear></b-icon-gear></a>
+            <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-person></b-icon-person></a>
+        </div>
     </nav>
 
     <b-navbar id="smNav" toggleable="md" type="dark" variant="dark" fixed="top">
