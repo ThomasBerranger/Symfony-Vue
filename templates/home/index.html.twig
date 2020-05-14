@@ -54,7 +54,7 @@
                 watched: function(movieTMDBId) {
                     this.loading = true
                     axios
-                        .post('{{ path('user_watch') }}',{tmdb_id: movieTMDBId})
+                        .post('{{ path('api_user_watch') }}',{tmdb_id: movieTMDBId})
                         .then(
                             response => {
                                 this.user_watched_ids.push(movieTMDBId)
@@ -71,7 +71,7 @@
                 '<b-button block v-if="loading" variant="primary" disabled>\n' +
                 '    <b-spinner small></b-spinner>\n' +
                 '  </b-button>' +
-                ' <b-button block variant="primary" v-else-if="user_watched_ids.includes(movie.id)">' +
+                ' <b-button block variant="success" v-else-if="user_watched_ids.includes(movie.id)">' +
                 '   <b-icon-eye-slash></b-icon-eye-slash>' +
                 '</b-button>' +
                 ' <b-button block variant="primary" v-else v-on:click="watched(movie.id)">' +

@@ -55,3 +55,15 @@ header a {
     display: none;
   }
 }
+
+.title-link  {
+  font-family: $title-font;
+  color: $custom-black;
+  text-align: center;
+  font-size: 2rem;
+
+  &:hover {
+    color: $custom-black;
+    text-decoration: none;
+  }
+}

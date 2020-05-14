@@ -17,6 +17,7 @@
                     description="Cet email ne sera pas communiqué."
             >
                 <b-form-input
+                        readonly
                         id="input-1"
                         v-model="form.email"
                         type="email"
@@ -54,7 +55,6 @@
             <p>Admin in the place</p>
         {% endif %}
 
-
     </div>
 {% endblock %}
 
@@ -80,7 +80,7 @@
                     evt.preventDefault()
                     console.log(this.form)
                     axios
-                        .put('{{ path('user_edit') }}', this.form)
+                        .put('{{ path('api_user_edit') }}', this.form)
                         .then(
                             response => {
                                 console.log(response)

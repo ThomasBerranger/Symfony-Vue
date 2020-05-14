@@ -29,14 +29,20 @@
 
 <section id="header">
 
-    <header id="header" class="d-none d-md-block d-lg-block">
-        <p id="headerTitle" class="title-font display-2">BroLight</p>
-        <a href="#mdNav"><b-icon-eject flip-v></b-icon-eject></a>
-    </header>
+    {% if app.request.pathInfo == '/' %}
+        <header id="header" class="d-none d-md-block d-lg-block">
+            <p id="headerTitle" class="title-font display-2">BroLight</p>
+            <a href="#mdNav"><b-icon-eject flip-v></b-icon-eject></a>
+        </header>
+    {% endif %}
 
     <nav id="mdNav" class="navbar justify-content-between bg-white" :class="{'fixed-top':isFixed}">
         <a href="#" class="btn btn-light"><b-icon-search></b-icon-search></a>
-        <h1 id="navTitle" class="text-center title-font" style="opacity: 0">BroLight</h1>
+        {% if app.request.pathInfo == '/' %}
+            <h1 id="navTitle" class="text-center title-font" style="opacity: 0">BroLight</h1>
+        {% else %}
+            <a href="{{ path('home') }}" class="title-link">BroLight</a>
+        {% endif %}
         <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-person></b-icon-person></a>
     </nav>
 
@@ -64,9 +70,10 @@
         el: '#header',
         delimiters: ['${', '}'],
         data: {
-            isFixed: false
+            isFixed: {{ app.request.pathInfo == '/' ? 'false' : 'true' }}
         },
         mounted() {
+            {% if app.request.pathInfo == '/' %}
             let header = document.getElementById('header');
             let mdNav = document.getElementById('mdNav');
             let headerTitle = document.getElementById('headerTitle');
@@ -81,6 +88,7 @@
                 headerTitle.style.opacity = (header.offsetHeight / window.scrollY) / 10
                 navTitle.style.opacity = 1 - (header.offsetHeight / window.scrollY) / 10
             }
+            {% endif %}
         }
     })
 </script>
