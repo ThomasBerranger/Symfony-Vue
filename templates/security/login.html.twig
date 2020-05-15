@@ -3,33 +3,52 @@
 {% block title %}Log in!{% endblock %}
 
 {% block body %}
-<form method="post">
-    {% if error %}
-        <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
-    {% endif %}
 
-    {% if app.user %}
-        <div class="mb-3">
-            You are logged in as {{ app.user.username }}, <a href="{{ path('app_logout') }}">Logout</a>
+    <div class="middle-container row">
+        <div class="middle-content col-12 col-md-8 col-lg-6">
+
+            <form method="post">
+                {% if error %}
+                    <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                {% endif %}
+
+                {% if app.user %}
+                    <div class="mb-3">
+                        You are logged in as {{ app.user.username }}, <a href="{{ path('app_logout') }}">Logout</a>
+                    </div>
+                {% endif %}
+
+                <h3 class="font-weight-normal text-center">Bon retour !</h3>
+
+                <br>
+
+                <label for="inputEmail">Email</label>
+                <input type="email" value="{{ last_username }}" name="email" id="inputEmail" class="form-control" required autofocus>
+
+                <br>
+
+                <label for="inputPassword">Password</label>
+                <input type="password" name="password" id="inputPassword" class="form-control" required>
+
+                <br>
+
+                <input type="checkbox" id="remember_me" name="_remember_me" checked/>
+                <label for="remember_me">Garde moi connecté</label>
+
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <br>
+                <br>
+
+                <button class="btn btn-block btn-primary text-center" type="submit">
+                    Me connecter
+                </button>
+
+                <hr>
+
+                <a href="{{ path('app_register') }}" class="float-right">T'as pas encore de compte ?</a>
+            </form>
+
         </div>
-    {% endif %}
-
-    <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
-    <label for="inputEmail">Email</label>
-    <input type="email" value="{{ last_username }}" name="email" id="inputEmail" class="form-control" required autofocus>
-    <label for="inputPassword">Password</label>
-    <input type="password" name="password" id="inputPassword" class="form-control" required>
-
-    <input type="checkbox" id="remember_me" name="_remember_me" checked/>
-    <label for="remember_me">Keep me logged in</label>
-
-    <input type="hidden" name="_csrf_token"
-           value="{{ csrf_token('authenticate') }}"
-    >
-
-    <button class="btn btn-lg btn-primary" type="submit">
-        Sign in
-    </button>
-    <a href="{{ path('app_register') }}">Register</a>
-</form>
+    </div>
 {% endblock %}

@@ -43,6 +43,7 @@
 
                 <b-button type="submit" variant="primary">Submit</b-button>
                 <b-button type="reset" variant="info">Reset</b-button>
+                <a href="{{ path('app_logout') }}" class="btn btn-danger">Logout</a>
             </b-form>
 
         </div>
@@ -59,6 +60,7 @@
                     id: ({{ app.user.id }}),
                     email: '{{ app.user.email }}',
                     username: '{{ app.user.username }}',
+                    password: '{{ app.user.password }}',
                 },
             },
             computed: {

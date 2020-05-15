@@ -3,6 +3,10 @@
 
 .main-font { font-family: "Montserrat", sans-serif; }
 
+.middle-container { position: relative; min-height: 100vh; }
+
+.middle-content { position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
+
 html { scroll-behavior: smooth; }
 
 body { font-family: "Montserrat", sans-serif; font-weight: 600; }
