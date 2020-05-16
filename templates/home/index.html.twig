@@ -7,24 +7,17 @@
 
         <b-card-group columns>
 
-            <b-card>
-                <b-card-text>The Movie Data Base</b-card-text>
-            </b-card>
-
+            <b-card><b-card-text>The Movie Data Base</b-card-text></b-card>
 
             <b-card v-for="movie in movies" :key="movie.id"
                     align="center"
                     :img-src="'https://image.tmdb.org/t/p/w500' + movie.poster_path"
                     :img-alt="'Poster of ' + movie.title"
-                    img-top
-            >
+                    img-top>
                 <b-card-text>
-
                     <movie-card-button :movie='movie' :user_watched_ids='userWatchedIds'></movie-card-button>
-
                 </b-card-text>
             </b-card>
-
 
             <b-card bg-variant="primary" text-variant="white">
                 <blockquote class="card-blockquote">

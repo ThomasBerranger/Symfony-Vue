@@ -3,13 +3,13 @@
 
 .main-font { font-family: "Montserrat", sans-serif; }
 
-.middle-container { position: relative; min-height: 100vh; }
+.middle-container { position: relative; }
 
 .middle-content { position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
 
 html { scroll-behavior: smooth; }
 
-body { font-family: "Montserrat", sans-serif; font-weight: 600; }
+body { font-family: "Montserrat", sans-serif; }
 
 header { position: relative; min-height: 100vh; width: 100%; background-image: url("../images/bobine-cassette-cinema.png"); background-attachment: fixed; background-repeat: no-repeat; background-size: cover; }
 
@@ -27,5 +27,11 @@ header a:hover { text-decoration: none; color: black; }
   #mdNav { display: none; } }
 .title-link { font-family: "Lobster Two", cursive; color: #000; text-align: center; font-size: 2rem; }
 .title-link:hover { color: #000; text-decoration: none; }
+
+h4.movie-title { font-size: 1.1rem; font-weight: 800; }
+
+p.movie-overview { font-size: 0.8rem; font-weight: 500; }
+
+.card-footer { border-top: none; background-color: transparent; }
 
 /*# sourceMappingURL=styles.css.map */
