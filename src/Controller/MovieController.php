@@ -16,8 +16,6 @@ class MovieController extends AbstractController
     public function search()
     {
 
-        return $this->render('movie/search.html.twig', [
-            'controller_name' => 'MovieController',
-        ]);
+        return $this->render('movie/search.html.twig');
     }
 }

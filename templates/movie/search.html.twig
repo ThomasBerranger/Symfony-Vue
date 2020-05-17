@@ -33,9 +33,7 @@
                 </b-row>
                 <template v-slot:footer>
                     <div class="btn-group btn-group-justified w-100">
-                        <b-button variant="primary">Vu</b-button>
-                        <b-button variant="info">Informations</b-button>
-                        <b-button variant="danger"><b-spinner small></b-spinner></b-button>
+                        <movie-card-button :movie='movie' :user_watched_ids='userWatchedIds'></movie-card-button>
                     </div>
                 </template>
             </b-card>
@@ -45,11 +43,17 @@
 {% endblock %}
 
 {% block javascripts %}
+    {{ include('movie/templates/buttons-component.html.twig') }}
     <script>
         new Vue({
             el: '#movieSearch',
             delimiters: ['${', '}'],
             data: {
+                userWatchedIds: [
+                    {% for movie in app.user.movies %}
+                    {{ movie.tmdbId }},
+                    {% endfor %}
+                ],
                 name: '',
                 movies: null
             },

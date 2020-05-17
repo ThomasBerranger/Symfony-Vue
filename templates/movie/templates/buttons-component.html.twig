@@ -1,0 +1,30 @@
+<script>
+    Vue.component('movie-card-button', {
+        props: ['movie', 'user_watched_ids'],
+        delimiters: ['${', '}'],
+        data: function () {
+            return {
+                loading: false,
+            }
+        },
+        methods: {
+            watched: function(movieTMDBId) {
+                this.loading = true
+                axios
+                    .post('{{ path('api_user_watch') }}',{tmdb_id: movieTMDBId})
+                    .then(
+                        response => {
+                            this.user_watched_ids.push(movieTMDBId)
+                            this.loading = false
+                        }, error => {
+                            this.loading = false
+                        }
+                    )
+            }
+        },
+        template:
+            '<b-button block v-if="loading" variant="primary" disabled><b-spinner small></b-spinner></b-button>' +
+            '<b-button block variant="success" v-else-if="user_watched_ids.includes(movie.id)"><b-icon-eye-fill></b-icon-eye-fill></b-button>' +
+            '<b-button block variant="primary" v-else v-on:click="watched(movie.id)"><b-icon-eye-slash></b-icon-eye-slash></b-button>'
+    })
+</script>
