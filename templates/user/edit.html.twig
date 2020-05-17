@@ -39,10 +39,17 @@
                     <b-form-invalid-feedback :state="isUsernameValid">${this.usernameInvalidMessage}</b-form-invalid-feedback>
                 </b-form-group>
 
-                <b-button type="submit" variant="primary">Submit</b-button>
-                <b-button type="reset" variant="info">Reset</b-button>
-                <a href="{{ path('app_logout') }}" class="btn btn-danger">Logout</a>
+                <b-button type="submit" variant="primary">Valider</b-button>
+                <b-button type="reset" variant="info" class="float-right">Réinitialiser</b-button>
             </b-form>
+
+            <hr>
+
+            <b-form-checkbox switch size="md" button-variant="danger">Adult content</b-form-checkbox>
+            <b-form-checkbox switch size="md" button-variant="light">Light mode</b-form-checkbox>
+
+            <br>
+            <a href="{{ path('app_logout') }}" class="btn btn-danger">Me déconnecter</a>
 
         </div>
     </div>

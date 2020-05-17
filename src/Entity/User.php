@@ -68,12 +68,38 @@ class User implements UserInterface
      */
     private $username;
 
+    /**
+     * @ORM\ManyToMany(targetEntity=User::class, inversedBy="users")
+     */
+    private $friends;
+
+    /**
+     * @ORM\ManyToMany(targetEntity=User::class, mappedBy="friends")
+     */
+    private $users;
+
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private $adultContent;
+
+    /**
+     * @ORM\Column(type="string", length=10)
+     */
+    private $theme;
+
 
     public function __construct()
     {
         $this->createdAt = new \DateTime('now');
         $this->updatedAt = new \DateTime('now');
+
         $this->movies = new ArrayCollection();
+        $this->friends = new ArrayCollection();
+        $this->users = new ArrayCollection();
+
+        $this->adultContent = false;
+        $this->theme = 'light';
     }
 
 
@@ -214,4 +240,83 @@ class User implements UserInterface
 
         return $this;
     }
+
+    /**
+     * @return Collection|self[]
+     */
+    public function getFriends(): Collection
+    {
+        return $this->friends;
+    }
+
+    public function addFriend(self $friend): self
+    {
+        if (!$this->friends->contains($friend)) {
+            $this->friends[] = $friend;
+        }
+
+        return $this;
+    }
+
+    public function removeFriend(self $friend): self
+    {
+        if ($this->friends->contains($friend)) {
+            $this->friends->removeElement($friend);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|self[]
+     */
+    public function getUsers(): Collection
+    {
+        return $this->users;
+    }
+
+    public function addUser(self $user): self
+    {
+        if (!$this->users->contains($user)) {
+            $this->users[] = $user;
+            $user->addFriend($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUser(self $user): self
+    {
+        if ($this->users->contains($user)) {
+            $this->users->removeElement($user);
+            $user->removeFriend($this);
+        }
+
+        return $this;
+    }
+
+    public function getAdultContent(): ?bool
+    {
+        return $this->adultContent;
+    }
+
+    public function setAdultContent(bool $adultContent): self
+    {
+        $this->adultContent = $adultContent;
+
+        return $this;
+    }
+
+    public function getTheme(): ?string
+    {
+        return $this->theme;
+    }
+
+    public function setTheme(string $theme): self
+    {
+        $this->theme = $theme;
+
+        return $this;
+    }
+
 }

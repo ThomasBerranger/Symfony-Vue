@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -15,7 +16,6 @@ class MovieController extends AbstractController
      */
     public function search()
     {
-
         return $this->render('movie/search.html.twig');
     }
 }

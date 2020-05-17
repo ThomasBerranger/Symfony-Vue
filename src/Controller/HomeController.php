@@ -8,10 +8,6 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class HomeController extends AbstractController
 {
-    public function __construct()
-    {
-    }
-
     /**
      * @Route("/", name="home")
      */
@@ -27,7 +23,7 @@ class HomeController extends AbstractController
 
         $content = $response->toArray();
 
-        return $this->render('home/trending.html.twig', [
+        return $this->render('movie/trending.html.twig', [
             'trendingMovies' => $content['results'],
         ]);
     }
