@@ -34,6 +34,8 @@
             <p id="headerTitle" class="title-font display-2">BroLight</p>
             <a href="#mdNav"><b-icon-eject flip-v></b-icon-eject></a>
         </header>
+
+        <div id="navReplacement" v-show="isFixed"></div>
     {% endif %}
 
     <nav id="mdNav" class="navbar {{ app.user ? 'justify-content-between' : 'justify-content-center' }} bg-white" :class="{'fixed-top':isFixed}">
@@ -68,7 +70,9 @@
                 <b-button variant="light" block @click="hide">
                     <b-icon-skip-forward></b-icon-skip-forward>
                 </b-button>
-                <b-button variant="light" block href="{{ path('user_show') }}">{{ app.user.username }}</b-button>
+                <b-button variant="light" block href="{{ path('movie_search') }}"><b-icon-search></b-icon-search></b-button>
+                <b-button variant="light" block href="{{ path('user_edit') }}"><b-icon-gear></b-icon-gear></b-button>
+                <b-button variant="light" block href="{{ path('user_show') }}"><b-icon-people></b-icon-people></b-button>
             </template>
         </b-sidebar>
     {% endif %}
@@ -91,6 +95,8 @@
             let mdNav = document.getElementById('mdNav');
             let headerTitle = document.getElementById('headerTitle');
             let navTitle = document.getElementById('navTitle');
+
+            document.getElementById("navReplacement").style.height = `${mdNav.offsetHeight}px`;
 
             window.document.onscroll = () => {
                 if (window.scrollY > mdNav.offsetTop && window.scrollY > header.offsetHeight - mdNav.offsetHeight){

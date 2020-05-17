@@ -27,7 +27,7 @@ class HomeController extends AbstractController
 
         $content = $response->toArray();
 
-        return $this->render('home/index.html.twig', [
+        return $this->render('home/trending.html.twig', [
             'trendingMovies' => $content['results'],
         ]);
     }
