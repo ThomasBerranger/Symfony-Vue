@@ -70,6 +70,7 @@ class User implements UserInterface
 
     /**
      * @ORM\ManyToMany(targetEntity=User::class, inversedBy="users")
+     * @Groups("user:read")
      */
     private $friends;
 
@@ -80,11 +81,13 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="boolean")
+     * @Groups("user:read")
      */
     private $adultContent;
 
     /**
      * @ORM\Column(type="string", length=10)
+     * @Groups("user:read")
      */
     private $theme;
 

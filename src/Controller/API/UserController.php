@@ -89,4 +89,30 @@ class UserController extends AbstractController
             return $this->json($e, 404);
         }
     }
+
+    /**
+     * @Route("/preference/{attribut}/{value}", name="preference", methods={"GET"})
+     */
+    public function preference($attribut, $value)
+    {
+        try {
+            $user = $this->getUser();
+
+            switch ($attribut) {
+                case 'adultContent':
+                    $user->setAdultContent($value);
+                    break;
+                case 'theme':
+                    $user->setTheme($value);
+                    break;
+            }
+
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
+
+            return $this->json($user, 201, [], ['groups' => 'user:read']);
+        } catch (NotFoundResourceException $e) {
+            return $this->json($e, 404);
+        }
+    }
 }

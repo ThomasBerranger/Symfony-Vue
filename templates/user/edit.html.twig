@@ -39,17 +39,17 @@
                     <b-form-invalid-feedback :state="isUsernameValid">${this.usernameInvalidMessage}</b-form-invalid-feedback>
                 </b-form-group>
 
-                <b-button type="submit" variant="primary">Valider</b-button>
+                <b-button type="submit" variant="primary">Je valide ${form.username}</b-button>
                 <b-button type="reset" variant="info" class="float-right">Réinitialiser</b-button>
             </b-form>
 
             <hr>
 
-            <b-form-checkbox switch size="md" button-variant="danger">Adult content</b-form-checkbox>
-            <b-form-checkbox switch size="md" button-variant="light">Light mode</b-form-checkbox>
+            <b-form-checkbox v-model="adultContent" switch size="lg">Adult content</b-form-checkbox>
+            <b-form-checkbox switch size="lg">Light mode</b-form-checkbox>
 
             <br>
-            <a href="{{ path('app_logout') }}" class="btn btn-danger">Me déconnecter</a>
+            <a href="{{ path('app_logout') }}" class="btn btn-danger float-right">Me déconnecter</a>
 
         </div>
     </div>
@@ -62,17 +62,29 @@
             delimiters: ['${', '}'],
             data: {
                 form: {
-                    id: ({{ app.user.id }}),
+                    id: '{{ app.user.id }}',
                     email: '{{ app.user.email }}',
                     username: '{{ app.user.username }}',
                     password: '{{ app.user.password }}',
                 },
                 isUsernameValid: true,
-                UsernameInvalidMessage: ''
+                UsernameInvalidMessage: '',
+                adultContent: {{ app.user.adultContent ? 'true' : 'false'}},
             },
             watch: {
                 'form.username': function () {
                     this.usernameCheck()
+                },
+                'adultContent' : function () {
+                    axios
+                        .get('{{ path('api_user_preference', { 'attribut': 'adultContent', 'value': 'replaceMe' }) }}'.replace('replaceMe', this.adultContent))
+                        .then(
+                            response => {
+                                console.log(response.data)
+                            }, error => {
+                                console.log(error)
+                            }
+                        )
                 }
             },
             methods: {
