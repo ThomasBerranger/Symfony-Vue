@@ -4,23 +4,32 @@
 
 {% block body %}
 
-    <div id="userEdit" class="col-12">
+    <div id="userEdit" class="row justify-content-center">
 
-        <p>Bonjour {{ app.user.username}} ! Choisissez vos préférences :</p>
+        <div class="col-12 col-md-10 col-lg-9 col-xl-8">
 
-        <hr>
-        <p>Films</p>
-        <ul>
-            {% for movie in app.user.movies %}
-                <li>{{ movie.tmdbId }}: vu le {{ movie.createdAt|date('d/m/Y')}}</li>
-            {% endfor %}
-        </ul>
+            <ul class="timeline">
 
-        {% if is_granted('ROLE_ADMIN') %}
-            <p>Admin in the place</p>
-        {% endif %}
+                <li v-for="(movie, index) in movieTimeline" :key="movie.name" :class="index % 2 ? 'timeline-inverted' : ''">
+                    <div class="timeline-badge"><b-icon icon="exclamation-circle-fill" variant="primary"></b-icon></div>
+                    <div class="timeline-panel">
+                        <div class="timeline-heading">
+                            <h4 class="timeline-title">${movie.title}</h4>
+                            <p><small class="text-muted"><i class="glyphicon glyphicon-time"></i> ${movie.createdAt.date}</small></p>
+                        </div>
+                        <div class="timeline-body">
+                            <p>${movie.overview}</p>
+                        </div>
+                    </div>
+                </li>
+
+            </ul>
+
+        </div>
 
     </div>
+
+
 {% endblock %}
 
 {% block javascripts %}
@@ -28,7 +37,12 @@
         new Vue({
             el: '#userEdit',
             delimiters: ['${', '}'],
-            data: {}
+            data: {
+                movieTimeline: {{ movieTimeline|raw }}
+            },
+            mounted() {
+                console.log(this.movieTimeline);
+            }
         })
     </script>
 {% endblock %}

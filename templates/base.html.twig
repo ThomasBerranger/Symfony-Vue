@@ -40,7 +40,10 @@
 
     <nav id="mdNav" class="navbar {{ app.user ? 'justify-content-between' : 'justify-content-center' }} bg-white" :class="{'fixed-top':isFixed}">
         {% if app.user %}
-            <a href="{{ path('movie_search') }}" class="btn btn-light"><b-icon-search></b-icon-search></a>
+            <div>
+                <a href="{{ path('movie_search') }}" class="btn btn-light"><b-icon-search></b-icon-search></a>
+                <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-people></b-icon-people></a>
+            </div>
         {% endif %}
         {% if app.request.pathInfo == '/' %}
             <h1 id="navTitle" class="text-center title-font" style="opacity: 0">BroLight</h1>
@@ -49,8 +52,8 @@
         {% endif %}
         {% if app.user %}
             <div>
+                <a href="#" class="btn btn-light"><b-icon-person-plus></b-icon-person-plus></a>
                 <a href="{{ path('user_edit') }}" class="btn btn-light"><b-icon-gear></b-icon-gear></a>
-                <a href="{{ path('user_show') }}" class="btn btn-light"><b-icon-people></b-icon-people></a>
             </div>
         {% endif %}
     </nav>

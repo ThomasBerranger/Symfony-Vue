@@ -15,7 +15,7 @@ class Movie
      * @ORM\Id()
      * @ORM\GeneratedValue()
      * @ORM\Column(type="integer")
-     * @Groups("movie:read")
+     * @Groups({"movie:read", "user:read"})
      */
     private $id;
 
@@ -27,18 +27,19 @@ class Movie
 
     /**
      * @ORM\Column(type="datetime")
-     * @Groups("movie:read")
+     * @Groups({"movie:read", "user:read"})
      */
     private $createdAt;
 
     /**
      * @ORM\Column(type="datetime")
-     * @Groups("movie:read")
+     * @Groups({"movie:read", "user:read"})
      */
     private $updatedAt;
 
     /**
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="movies")
+     * @Groups("movie:read")
      */
     private $user;
 

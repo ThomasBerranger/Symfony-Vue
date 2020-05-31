@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Movie;
 use App\Entity\User;
+use App\Service\MovieService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,9 +20,10 @@ class UserController extends AbstractController
 {
     private $entityManager;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    public function __construct(EntityManagerInterface $entityManager, MovieService $movieService)
     {
         $this->entityManager = $entityManager;
+        $this->movieService = $movieService;
     }
 
     /**
@@ -29,7 +31,11 @@ class UserController extends AbstractController
      */
     public function show()
     {
-        return $this->render('user/show.html.twig');
+        $movieTimeline = $this->movieService->getMovieTimeline();
+
+        return $this->render('user/show.html.twig', [
+            'movieTimeline' => $movieTimeline
+        ]);
     }
 
     /**

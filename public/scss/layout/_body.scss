@@ -5,3 +5,8 @@ html {
 body {
   font-family: $main-font;
 }
+
+nav {
+  z-index: 1;
+  box-shadow: 0px 5px 10px #00000052;
+}
