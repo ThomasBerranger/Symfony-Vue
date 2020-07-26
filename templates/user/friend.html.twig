@@ -8,17 +8,18 @@
         <div class="col-12 col-md-8 col-lg-6">
             <h1>Friends page</h1>
 
-            <b-form-input v-model="username" placeholder="Comment s'appelle ton ami(e) ?" required debounce="600" class="mt-5 mb-2"></b-form-input>
+            <b-form-input v-model="username" placeholder="Comment s'appelle ton ami(e) ?" required debounce="600" class="my-5"></b-form-input>
 
-            <p class="my-2" v-for="user in users" :key="user.id" v-if="user.id !== {{ app.user.id }}">
-                ${ user.username } : ${ user.email }
-            </p>
+            <div class="row">
+                <user-friend-button :user='user' v-for="user in users" :key="user.id" v-if="user.id !== {{ app.user.id }}"></user-friend-button>
+            </div>
 
         </div>
     </div>
 {% endblock %}
 
 {% block javascripts %}
+    {{ include('user/templates/buttons-component.html.twig') }}
     <script>
         new Vue({
             el: '#userFirend',

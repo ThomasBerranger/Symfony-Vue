@@ -130,4 +130,29 @@ class UserController extends AbstractController
 
         return $this->json($users, 200, [], ['groups' => 'user:read']);
     }
+
+    /**
+     * @Route("/friend", name="friend", methods={"POST"})
+     */
+    public function addFriend(Request $request)
+    {
+        $json = json_decode($request->getContent(), true);
+
+        try {
+            $user = $this->entityManager->getRepository(User::class)->find($json['id']);
+            /** @var User $currentUser */
+            $currentUser = $this->getUser();
+
+            $currentUser->addFriend($user);
+            $this->entityManager->persist($currentUser);
+            $this->entityManager->flush();
+
+            return $this->json($currentUser, 201, [], ['groups' => 'user:read']);
+        } catch (NotEncodableValueException $e) {
+            return $this->json([
+                'status' => 400,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }
