@@ -115,4 +115,19 @@ class UserController extends AbstractController
             return $this->json($e, 404);
         }
     }
+
+    /**
+     * @Route("/", name="list", methods={"GET"})
+     * @Route("/{username}", name="search", methods={"GET"})
+     */
+    public function list($username = null)
+    {
+        if ($username == null) {
+            $users = $this->entityManager->getRepository(User::class)->findAll();
+        } else {
+            $users = $this->entityManager->getRepository(User::class)->findByUsername($username);
+        }
+
+        return $this->json($users, 200, [], ['groups' => 'user:read']);
+    }
 }

@@ -52,7 +52,7 @@
         {% endif %}
         {% if app.user %}
             <div>
-                <a href="#" class="btn btn-light"><b-icon-person-plus></b-icon-person-plus></a>
+                <a href="{{ path('user_friend') }}" class="btn btn-light"><b-icon-person-plus></b-icon-person-plus></a>
                 <a href="{{ path('user_edit') }}" class="btn btn-light"><b-icon-gear></b-icon-gear></a>
             </div>
         {% endif %}

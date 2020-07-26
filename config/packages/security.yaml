@@ -34,8 +34,5 @@ security:
         - { path: ^/(login|register)$, roles: IS_AUTHENTICATED_ANONYMOUSLY }
 
         - { path: '^/', roles: ROLE_USER }
-        - { path: '^/admin', roles: ROLE_ADMIN }
 
-        # the 'path' value can be any valid regular expression
-        # (this one will match URLs like /api/post/7298 and /api/comment/528491)
-        - { path: ^/api/(post|comment)/\d+$, roles: ROLE_USER }
+        - { path: '^/admin', roles: ROLE_ADMIN }

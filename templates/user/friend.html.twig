@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Friend{% endblock %}
+
+{% block body %}
+
+    <div id="userFirend" class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <h1>Friends page</h1>
+
+            <b-form-input v-model="username" placeholder="Comment s'appelle ton ami(e) ?" required debounce="600" class="mt-5 mb-2"></b-form-input>
+
+            <p class="my-2" v-for="user in users" :key="user.id" v-if="user.id !== {{ app.user.id }}">
+                ${ user.username } : ${ user.email }
+            </p>
+
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        new Vue({
+            el: '#userFirend',
+            delimiters: ['${', '}'],
+            data: {
+                username: '',
+                users: null
+            },
+            watch: {
+                username: function () {
+                    if (this.username != '') {
+                        axios
+                            .get('{{ path('api_user_search', { 'username': 'replaceMe' }) }}'.replace('replaceMe', this.username))
+                            .then(
+                                response => {
+                                    this.users = response.data
+                                    console.log(response.data)
+                                }, error => {
+                                    console.log(error)
+                                }
+                            )
+                    } else {
+                        this.users = null
+                    }
+                }
+            }
+        })
+    </script>
+{% endblock %}

@@ -45,4 +45,12 @@ class UserController extends AbstractController
     {
         return $this->render('user/edit.html.twig');
     }
+
+    /**
+     * @Route("/friend", name="friend")
+     */
+    public function friend()
+    {
+        return $this->render('user/friend.html.twig');
+    }
 }
