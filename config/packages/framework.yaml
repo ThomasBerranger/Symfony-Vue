@@ -1,3 +1,4 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
     secret: '%env(APP_SECRET)%'
     #csrf_protection: true
@@ -14,7 +15,3 @@ framework:
     #fragments: true
     php_errors:
         log: true
-
-parameters:
-    app.project.title: 'BroLight'
-    app.tmdb.id: '881f215dc9661f8bdf8acde7e5b043c5'

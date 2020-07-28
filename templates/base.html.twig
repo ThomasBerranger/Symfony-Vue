@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <title>{{ project_title }} - {% block title %} {% endblock %}</title>
+    <title>{{ project_title }} - {% block title %}{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ asset('images/clap.png') }}" />
 
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -31,7 +31,7 @@
 
     {% if app.request.pathInfo == '/' %}
         <header id="header" class="d-none d-md-block d-lg-block">
-            <p id="headerTitle" class="title-font display-2">BroLight</p>
+            <p id="headerTitle" class="title-font display-2">{{ project_title }}</p>
             <a href="#mdNav"><b-icon-eject flip-v></b-icon-eject></a>
         </header>
 
@@ -46,9 +46,9 @@
             </div>
         {% endif %}
         {% if app.request.pathInfo == '/' %}
-            <h1 id="navTitle" class="text-center title-font" style="opacity: 0">BroLight</h1>
+            <h1 id="navTitle" class="text-center title-font" style="opacity: 0">{{ project_title }}</h1>
         {% else %}
-            <a href="{{ path('home') }}" class="title-link">BroLight</a>
+            <a href="{{ path('home') }}" class="title-link">{{ project_title }}</a>
         {% endif %}
         {% if app.user %}
             <div>
@@ -59,7 +59,7 @@
     </nav>
 
     <b-navbar id="smNav" toggleable="md" type="dark" variant="dark" fixed="top">
-        <b-navbar-brand class="title-font" href="{{ path('home') }}">BroLight</b-navbar-brand>
+        <b-navbar-brand class="title-font" href="{{ path('home') }}">{{ project_title }}</b-navbar-brand>
         {% if app.user %}
         <b-button v-b-toggle.sidebar variant="dark" right>
             <b-icon-skip-backward aria-hidden="true"></b-icon-skip-backward>
