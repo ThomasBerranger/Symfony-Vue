@@ -54,7 +54,7 @@ class UserController extends AbstractController
         try {
             $movie = $serializer->deserialize($json, Movie::class, 'json');
 
-            $movie->setUser($this->getUser());
+            $movie->setViewer($this->getUser());
             $this->entityManager->persist($movie);
             $this->entityManager->flush();
 

@@ -1,9 +1,14 @@
 <script>
     Vue.component('watch-button', {
-        props: ['movie', 'user_watched_ids'],
+        props: ['movie'],
         delimiters: ['${', '}'],
         data: function () {
             return {
+                user_watched_ids: [
+                    {% for movie in app.user.watchedMovies %}
+                    {{ movie.tmdbId }},
+                    {% endfor %}
+                ],
                 loading: false,
             }
         },

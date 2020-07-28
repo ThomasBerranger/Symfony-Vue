@@ -17,10 +17,10 @@
                 <b-card-text>
                     <div class="row">
                         <div class="col-6">
-                            <comment-button :movie='movie' :user_commented_ids='userCommentedIds'></comment-button>
+                            <comment-button :movie='movie' @toggle-modal="modalShow = !modalShow, modalTitle = $event"></comment-button>
                         </div>
                         <div class="col-6">
-                            <watch-button :movie='movie' :user_watched_ids='userWatchedIds'></watch-button>
+                            <watch-button :movie='movie'></watch-button>
                         </div>
                     </div>
                 </b-card-text>
@@ -37,6 +37,22 @@
 
         </b-card-group>
 
+
+        <b-modal ref="my-modal" centered hide-footer hide-header v-model="modalShow">
+            <h4 class="text-center">${ modalTitle }</h4>
+            <div class="d-block text-center my-3">
+                <textarea name="content" class="form-control"></textarea>
+            </div>
+            <div class="row">
+                <div class="col-8">
+                    <b-button class="mt-3 btn-sm" variant="outline-success" block @click="modalShow = !modalShow">Publier</b-button>
+                </div>
+                <div class="col-4">
+                    <b-button class="mt-3 btn-sm" variant="outline-danger" block @click="modalShow = !modalShow"><b-icon-x></b-icon-x></b-button>
+                </div>
+            </div>
+        </b-modal>
+
     </section>
 {% endblock %}
 
@@ -49,17 +65,9 @@
             el: '#home',
             delimiters: ['${', '}'],
             data: {
-                userWatchedIds: [
-                    {% for movie in app.user.watchedMovies %}
-                    {{ movie.tmdbId }},
-                    {% endfor %}
-                ],
-                userCommentedIds: [
-                    {% for movie in app.user.watchedMovies %}
-                    {{ movie.tmdbId }},
-                    {% endfor %}
-                ],
                 movies: {{ trendingMovies|json_encode|raw }},
+                modalShow: false,
+                modalTitle: '',
             },
         })
     </script>

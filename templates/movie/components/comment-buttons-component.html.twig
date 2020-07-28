@@ -1,18 +1,23 @@
 <script>
     Vue.component('comment-button', {
-        props: ['movie', 'user_commented_ids'],
+        props: ['movie'],
         delimiters: ['${', '}'],
         data: function () {
             return {
+                userComments: [
+                    {% for comment in app.user.comments %}
+                    {{ comment.tmdbId }},
+                    {% endfor %}
+                ],
             }
         },
         methods: {
             comment: function(movieTMDBId) {
-                console.log(`comment: ${movieTMDBId}`)
+                this.$emit("toggle-modal", this.movie.title);
+                console.log("envoie du comment");
             }
         },
         template:
-            '<b-button variant="primary" block v-on:click="comment(movie.id)"><b-icon-card-text></b-icon-card-text></b-button>'
-
+            '<b-button variant="primary" block @click="comment(movie.id)"><b-icon-chat-dots></b-icon-chat-dots></b-button>'
     })
 </script>
