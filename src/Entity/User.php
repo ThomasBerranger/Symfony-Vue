@@ -57,10 +57,10 @@ class User implements UserInterface
     private $updatedAt;
 
     /**
-     * @ORM\OneToMany(targetEntity=Movie::class, mappedBy="user")
+     * @ORM\OneToMany(targetEntity=Movie::class, mappedBy="viewer")
      * @Groups("user:read")
      */
-    private $movies;
+    private $watchedMovies;
 
     /**
      * @ORM\Column(type="string", length=180, unique=true)
@@ -91,6 +91,11 @@ class User implements UserInterface
      */
     private $theme;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Comment::class, mappedBy="author", orphanRemoval=true)
+     */
+    private $comments;
+
 
     public function __construct()
     {
@@ -103,6 +108,7 @@ class User implements UserInterface
 
         $this->adultContent = false;
         $this->theme = 'light';
+        $this->comments = new ArrayCollection();
     }
 
 
@@ -209,16 +215,16 @@ class User implements UserInterface
     /**
      * @return Collection|Movie[]
      */
-    public function getMovies(): Collection
+    public function getWatchedMovies(): Collection
     {
-        return $this->movies;
+        return $this->watchedMovies;
     }
 
-    public function addMovie(Movie $movie): self
+    public function addMovie(Movie $watchedMovies): self
     {
-        if (!$this->movies->contains($movie)) {
-            $this->movies[] = $movie;
-            $movie->setUser($this);
+        if (!$this->watchedMovies->contains($watchedMovies)) {
+            $this->watchedMovies[] = $watchedMovies;
+            $watchedMovies->setUser($this);
         }
 
         return $this;
@@ -318,6 +324,37 @@ class User implements UserInterface
     public function setTheme(string $theme): self
     {
         $this->theme = $theme;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Comment[]
+     */
+    public function getComments(): Collection
+    {
+        return $this->comments;
+    }
+
+    public function addComment(Comment $comment): self
+    {
+        if (!$this->comments->contains($comment)) {
+            $this->comments[] = $comment;
+            $comment->setAuthor($this);
+        }
+
+        return $this;
+    }
+
+    public function removeComment(Comment $comment): self
+    {
+        if ($this->comments->contains($comment)) {
+            $this->comments->removeElement($comment);
+            // set the owning side to null (unless already changed)
+            if ($comment->getAuthor() === $this) {
+                $comment->setAuthor(null);
+            }
+        }
 
         return $this;
     }

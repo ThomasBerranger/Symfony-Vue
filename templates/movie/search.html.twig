@@ -33,7 +33,7 @@
                 </b-row>
                 <template v-slot:footer>
                     <div class="btn-group btn-group-justified w-100">
-                        <movie-card-button :movie='movie' :user_watched_ids='userWatchedIds'></movie-card-button>
+                        <watch-button :movie='movie' :user_watched_ids='userWatchedIds'></watch-button>
                     </div>
                 </template>
             </b-card>
@@ -43,14 +43,14 @@
 {% endblock %}
 
 {% block javascripts %}
-    {{ include('movie/templates/buttons-component.html.twig') }}
+    {{ include('movie/components/watch-buttons-component.html.twig') }}
     <script>
         new Vue({
             el: '#movieSearch',
             delimiters: ['${', '}'],
             data: {
                 userWatchedIds: [
-                    {% for movie in app.user.movies %}
+                    {% for movie in app.user.watchedMovies %}
                     {{ movie.tmdbId }},
                     {% endfor %}
                 ],

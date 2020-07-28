@@ -1,5 +1,5 @@
 <script>
-    Vue.component('movie-card-button', {
+    Vue.component('watch-button', {
         props: ['movie', 'user_watched_ids'],
         delimiters: ['${', '}'],
         data: function () {
@@ -23,15 +23,8 @@
             }
         },
         template:
-            '<div class="row">' +
-            '<div class="col-6">' +
-            '<b-button variant="primary" block><b-icon-card-text></b-icon-card-text></b-button>' +
-            '</div>' +
-            '<div class="col-6">' +
             '<b-button variant="danger" block v-if="loading" disabled><b-spinner small></b-spinner></b-button>' +
             '<b-button variant="success" block v-else-if="user_watched_ids.includes(movie.id)"><b-icon-eye-fill></b-icon-eye-fill></b-button>' +
-            '<b-button variant="danger" block v-else v-on:click="watched(movie.id)"><b-icon-eye-slash></b-icon-eye-slash></b-button>' +
-            '</div>' +
-            '</div>'
+            '<b-button variant="danger" block v-else v-on:click="watched(movie.id)"><b-icon-eye-slash></b-icon-eye-slash></b-button>'
     })
 </script>

@@ -15,7 +15,14 @@
                     :img-alt="'Poster of ' + movie.title"
                     img-top>
                 <b-card-text>
-                    <movie-card-button :movie='movie' :user_watched_ids='userWatchedIds'></movie-card-button>
+                    <div class="row">
+                        <div class="col-6">
+                            <comment-button :movie='movie' :user_commented_ids='userCommentedIds'></comment-button>
+                        </div>
+                        <div class="col-6">
+                            <watch-button :movie='movie' :user_watched_ids='userWatchedIds'></watch-button>
+                        </div>
+                    </div>
                 </b-card-text>
             </b-card>
 
@@ -34,14 +41,21 @@
 {% endblock %}
 
 {% block javascripts %}
-    {{ include('movie/templates/buttons-component.html.twig') }}
+    {{ include('movie/components/watch-buttons-component.html.twig') }}
+    {{ include('movie/components/comment-buttons-component.html.twig') }}
+
     <script>
         new Vue({
             el: '#home',
             delimiters: ['${', '}'],
             data: {
                 userWatchedIds: [
-                    {% for movie in app.user.movies %}
+                    {% for movie in app.user.watchedMovies %}
+                    {{ movie.tmdbId }},
+                    {% endfor %}
+                ],
+                userCommentedIds: [
+                    {% for movie in app.user.watchedMovies %}
                     {{ movie.tmdbId }},
                     {% endfor %}
                 ],

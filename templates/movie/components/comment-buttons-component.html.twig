@@ -1,0 +1,18 @@
+<script>
+    Vue.component('comment-button', {
+        props: ['movie', 'user_commented_ids'],
+        delimiters: ['${', '}'],
+        data: function () {
+            return {
+            }
+        },
+        methods: {
+            comment: function(movieTMDBId) {
+                console.log(`comment: ${movieTMDBId}`)
+            }
+        },
+        template:
+            '<b-button variant="primary" block v-on:click="comment(movie.id)"><b-icon-card-text></b-icon-card-text></b-button>'
+
+    })
+</script>

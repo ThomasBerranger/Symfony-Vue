@@ -38,10 +38,10 @@ class Movie
     private $updatedAt;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="movies")
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="watchedMovies")
      * @Groups("movie:read")
      */
-    private $user;
+    private $viewer;
 
     
     public function __construct()
@@ -92,14 +92,14 @@ class Movie
         return $this;
     }
 
-    public function getUser(): ?User
+    public function getViewer(): ?User
     {
-        return $this->user;
+        return $this->viewer;
     }
 
-    public function setUser(?User $user): self
+    public function setViewer(?User $viewer): self
     {
-        $this->user = $user;
+        $this->viewer = $viewer;
 
         return $this;
     }

@@ -27,4 +27,13 @@ Projet personnel visant à fusionner les frameworks Symfony v5 et Vue v2.
 * [PhpStorm](https://www.jetbrains.com/fr-fr/phpstorm/)
 * [Koala](http://koala-app.com/)
 
-#### Détails sur le projet prochainement ... 
+## Détails sur le projet prochainement ... 
+
+## Installation
+```bash
+git clone https://github.com/ThomasBerranger/BroLight.git
+cd Brolight
+composer install
+php bin/console d:d:c
+symfony server:start
+```
