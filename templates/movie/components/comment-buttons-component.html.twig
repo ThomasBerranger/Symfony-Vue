@@ -13,7 +13,7 @@
         },
         methods: {
             comment: function(movieTMDBId) {
-                this.$emit("toggle-modal", this.movie.title);
+                this.$emit("toggle-modal", this.movie);
                 console.log("envoie du comment");
             }
         },

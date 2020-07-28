@@ -17,7 +17,7 @@
                 <b-card-text>
                     <div class="row">
                         <div class="col-6">
-                            <comment-button :movie='movie' @toggle-modal="modalShow = !modalShow, modalTitle = $event"></comment-button>
+                            <comment-button :movie='movie' @toggle-modal="modalShow = !modalShow, selectedMovie = $event"></comment-button>
                         </div>
                         <div class="col-6">
                             <watch-button :movie='movie'></watch-button>
@@ -39,7 +39,7 @@
 
 
         <b-modal ref="my-modal" centered hide-footer hide-header v-model="modalShow">
-            <h4 class="text-center">${ modalTitle }</h4>
+            <h4 class="text-center">${ selectedMovie ? selectedMovie.title : '' }</h4>
             <div class="d-block text-center my-3">
                 <textarea name="content" class="form-control"></textarea>
             </div>
@@ -67,7 +67,7 @@
             data: {
                 movies: {{ trendingMovies|json_encode|raw }},
                 modalShow: false,
-                modalTitle: '',
+                selectedMovie: null,
             },
         })
     </script>
