@@ -38,7 +38,7 @@
         <div id="navReplacement" v-show="isFixed"></div>
     {% endif %}
 
-    <nav id="mdNav" class="navbar {{ app.user ? 'justify-content-between' : 'justify-content-center' }} bg-white" :class="{'fixed-top':isFixed}">
+    <nav id="mdNav" class="navbar {{ app.user ? 'justify-content-between' : 'justify-content-center' }} bg-white mb-5" :class="{'fixed-top':isFixed}">
         {% if app.user %}
             <div>
                 <a href="{{ path('movie_search') }}" class="btn btn-light"><b-icon-search></b-icon-search></a>
