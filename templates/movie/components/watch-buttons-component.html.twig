@@ -13,13 +13,13 @@
             }
         },
         methods: {
-            watched: function(movieTMDBId) {
+            watched: function() {
                 this.loading = true
                 axios
-                    .post('{{ path('api_user_watch') }}',{tmdb_id: movieTMDBId})
+                    .post('{{ path('api_user_watch') }}',{tmdb_id: this.movie.id})
                     .then(
                         response => {
-                            this.user_watched_ids.push(movieTMDBId)
+                            this.user_watched_ids.push(this.movie.id)
                             this.loading = false
                         }, error => {
                             this.loading = false
@@ -30,6 +30,6 @@
         template:
             '<b-button variant="danger" block v-if="loading" disabled><b-spinner small></b-spinner></b-button>' +
             '<b-button variant="success" block v-else-if="user_watched_ids.includes(movie.id)"><b-icon-eye-fill></b-icon-eye-fill></b-button>' +
-            '<b-button variant="danger" block v-else v-on:click="watched(movie.id)"><b-icon-eye-slash></b-icon-eye-slash></b-button>'
+            '<b-button variant="danger" block v-else v-on:click="watched()"><b-icon-eye-slash></b-icon-eye-slash></b-button>'
     })
 </script>

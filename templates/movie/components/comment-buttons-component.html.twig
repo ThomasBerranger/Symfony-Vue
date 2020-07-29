@@ -4,20 +4,62 @@
         delimiters: ['${', '}'],
         data: function () {
             return {
-                userComments: [
+                loading: false,
+                user_comments_ids: [
                     {% for comment in app.user.comments %}
                     {{ comment.tmdbId }},
                     {% endfor %}
                 ],
+                modalShow: false,
+                form: {
+                    author: {{ app.user.id }},
+                    tmdb_id: this.movie.id,
+                    content: null,
+                },
             }
         },
         methods: {
-            comment: function(movieTMDBId) {
-                this.$emit("toggle-modal", this.movie);
-                console.log("envoie du comment");
-            }
+            onSubmit: function() {
+                this.loading = true
+                axios
+                    .post('{{ path('api_comment_new') }}', this.form)
+                    .then(
+                        response => {
+                            this.user_comments_ids.push(this.movie.id)
+                            this.modalShow = !this.modalShow
+                        }, error => {
+                            this.modalShow = !this.modalShow
+                        }
+                    )
+            },
         },
         template:
-            '<b-button variant="primary" block @click="comment(movie.id)"><b-icon-chat-dots></b-icon-chat-dots></b-button>'
+            '<div>'+
+            '<b-button variant="success" block v-if="user_comments_ids.includes(movie.id)"><b-icon-chat-left-dots></b-icon-chat-left-dots></b-button>' +
+            '<b-button variant="danger" block v-else v-on:click="modalShow = !modalShow"><b-icon-chat-left-dots-fill></b-icon-chat-left-dots-fill></b-button>' +
+
+            '<b-modal ref="my-modal" centered hide-footer hide-header v-model="modalShow" class="p-3">' +
+            '<h4 class="text-center my-2">${ movie ? movie.title : "" }</h4>' +
+            '<b-form @submit.prevent="onSubmit" class="d-block text-center my-3">' +
+            '<b-form-textarea class="form-control" required placeholder="Alors claque ou navet ?" v-model="form.content">' +
+            '</b-form-textarea>' +
+            '<div class="row">' +
+            '<div class="col-4">' +
+            '<b-button v-if="loading" class="mt-3 btn-sm" variant="outline-success" block disabled><b-spinner small></b-spinner></b-button>' +
+            '<b-button v-else class="mt-3 btn-sm" variant="outline-success" block type="submit">' +
+            '<b-iconstack>' +
+            '<b-icon stacked icon="chat-left"></b-icon>' +
+            '<b-icon stacked icon="check" shift-v="2"></b-icon>' +
+            '</b-iconstack>' +
+            '</b-button>' +
+            '</div>' +
+            '<div class="col-4 offset-4">' +
+            '<b-button class="mt-3 btn-sm" variant="outline-danger" block @click="modalShow = !modalShow"><b-icon-x></b-icon-x></b-button>' +
+            '</div>' +
+            '</div>' +
+            '</b-form>' +
+            '</b-modal>' +
+            '</div>'
+
     })
 </script>

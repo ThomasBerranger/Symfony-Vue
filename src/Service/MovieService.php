@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Movie;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpClient\HttpClient;
@@ -22,7 +23,7 @@ class MovieService
         $client = HttpClient::create();
         $movies = [];
 
-        $currentUserTimeline = $this->entityManager->getRepository(Movie::class)->findBy(['user' => $this->security->getUser()]);
+        $currentUserTimeline = $this->entityManager->getRepository(Movie::class)->findBy(['viewer' => $this->security->getUser()]);
 
         /**
          * @var integer $key

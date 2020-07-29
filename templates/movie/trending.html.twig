@@ -6,9 +6,7 @@
     <section id="home" class="col-12 offset-lg-2 col-lg-8">
 
         <b-card-group columns>
-
             <b-card><b-card-text>The Movie Data Base</b-card-text></b-card>
-
             <b-card v-for="movie in movies" :key="movie.id"
                     align="center"
                     :img-src="'https://image.tmdb.org/t/p/w500' + movie.poster_path"
@@ -17,7 +15,7 @@
                 <b-card-text>
                     <div class="row">
                         <div class="col-6">
-                            <comment-button :movie='movie' @toggle-modal="modalShow = !modalShow, selectedMovie = $event"></comment-button>
+                            <comment-button :movie='movie' @toggle-modal="modalShow = !modalShow, selectedMovie = movie"></comment-button>
                         </div>
                         <div class="col-6">
                             <watch-button :movie='movie'></watch-button>
@@ -25,7 +23,6 @@
                     </div>
                 </b-card-text>
             </b-card>
-
             <b-card bg-variant="primary" text-variant="white">
                 <blockquote class="card-blockquote">
                     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
@@ -34,24 +31,7 @@
                     </footer>
                 </blockquote>
             </b-card>
-
         </b-card-group>
-
-
-        <b-modal ref="my-modal" centered hide-footer hide-header v-model="modalShow">
-            <h4 class="text-center">${ selectedMovie ? selectedMovie.title : '' }</h4>
-            <div class="d-block text-center my-3">
-                <textarea name="content" class="form-control"></textarea>
-            </div>
-            <div class="row">
-                <div class="col-8">
-                    <b-button class="mt-3 btn-sm" variant="outline-success" block @click="modalShow = !modalShow">Publier</b-button>
-                </div>
-                <div class="col-4">
-                    <b-button class="mt-3 btn-sm" variant="outline-danger" block @click="modalShow = !modalShow"><b-icon-x></b-icon-x></b-button>
-                </div>
-            </div>
-        </b-modal>
 
     </section>
 {% endblock %}
@@ -66,8 +46,6 @@
             delimiters: ['${', '}'],
             data: {
                 movies: {{ trendingMovies|json_encode|raw }},
-                modalShow: false,
-                selectedMovie: null,
             },
         })
     </script>

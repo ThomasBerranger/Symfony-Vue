@@ -18,8 +18,6 @@ use Symfony\Component\Serializer\SerializerInterface;
  */
 class UserController extends AbstractController
 {
-    private $entityManager;
-
     public function __construct(EntityManagerInterface $entityManager, MovieService $movieService)
     {
         $this->entityManager = $entityManager;
