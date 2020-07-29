@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}My profile{% endblock %}
+{% block title %}Mon profile{% endblock %}
 
 {% block body %}
 
@@ -14,11 +14,12 @@
                     <div class="timeline-badge"><b-icon icon="exclamation-circle-fill" variant="primary"></b-icon></div>
                     <div class="timeline-panel">
                         <div class="timeline-heading">
-                            <h4 class="timeline-title">${movie.title}</h4>
+                            <h5 class="timeline-title">${movie.title} <span class="h6 float-right">${movie.viewer}</span></h5>
                             <p><small class="text-muted"><b-icon-clock-history class="mr-1"></b-icon-clock-history> ${movie.createdAt.date}</small></p>
                         </div>
                         <div class="timeline-body">
                             <p>${movie.overview}</p>
+                            <p>${movie.comment}</p>
                         </div>
                     </div>
                 </li>
@@ -28,7 +29,6 @@
         </div>
 
     </div>
-
 
 {% endblock %}
 

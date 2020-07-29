@@ -11,25 +11,28 @@ use Symfony\Component\Security\Core\Security;
 
 class MovieService
 {
-    public function __construct(Security $security, EntityManagerInterface $entityManager, ParameterBagInterface $parameterBag)
+    public function __construct(Security $security, EntityManagerInterface $entityManager, ParameterBagInterface $parameterBag, CommentService $commentService)
     {
         $this->security = $security;
         $this->entityManager = $entityManager;
         $this->parameterBag = $parameterBag;
+        $this->commentService = $commentService;
     }
 
     public function getMovieTimeline()
     {
         $client = HttpClient::create();
-        $movies = [];
+        $timeline = [];
 
-        $currentUserTimeline = $this->entityManager->getRepository(Movie::class)->findBy(['viewer' => $this->security->getUser()]);
+        $currentUserWatchedMovies = $this->entityManager->getRepository(Movie::class)->findBy(['viewer' => $this->security->getUser()]);
+
+        $movies = array_merge($currentUserWatchedMovies, $this->getFriendWatchedMovies());
 
         /**
          * @var integer $key
          * @var Movie $movie
          */
-        foreach ($currentUserTimeline as $key => $movie) {
+        foreach ($movies as $movie) {
 
             $response = $client->request('GET', 'https://api.themoviedb.org/3/movie/'.$movie->getTmdbId(), [
                 'query' => [
@@ -40,7 +43,9 @@ class MovieService
 
             $content = $response->toArray();
 
-            $movies[$key] = [
+            $timeline[$movie->getId()] = [
+                'viewer' => $movie->getViewer()->getUsername(),
+                'comment' => $this->commentService->getComment($this->security->getUser(), $movie->getTmdbId()),
                 'createdAt' => $movie->getCreatedAt(),
                 'title' => $content['title'],
                 'overview' => $content['overview'],
@@ -48,8 +53,21 @@ class MovieService
             ];
         }
 
-        rsort($movies);
+        krsort($timeline);
 
-        return json_encode($movies);
+        return json_encode(array_values($timeline));
+    }
+    
+    private function getFriendWatchedMovies() 
+    {
+        $movies = [];
+        
+        foreach ($this->security->getUser()->getFriends() as $friend) {
+            foreach ($friend->getWatchedMovies() as $movie) {
+                array_push($movies, $movie);
+            }
+        }
+        
+        return $movies;
     }
 }
