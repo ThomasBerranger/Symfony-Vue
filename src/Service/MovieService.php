@@ -45,7 +45,7 @@ class MovieService
 
             $timeline[$movie->getId()] = [
                 'viewer' => $movie->getViewer()->getUsername(),
-                'comment' => $this->commentService->getComment($this->security->getUser(), $movie->getTmdbId()),
+                'comment' => $this->commentService->getComment($movie->getViewer(), $movie->getTmdbId()),
                 'createdAt' => $movie->getCreatedAt(),
                 'title' => $content['title'],
                 'overview' => $content['overview'],
