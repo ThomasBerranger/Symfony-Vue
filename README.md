@@ -34,6 +34,7 @@ Projet personnel visant à fusionner les frameworks Symfony v5 et Vue v2.
 git clone https://github.com/ThomasBerranger/BroLight.git
 cd Brolight
 composer install
-php bin/console d:d:c
+# edit the username & password in the .env file
+php bin/console doctrine:database:create
 symfony server:start
 ```
