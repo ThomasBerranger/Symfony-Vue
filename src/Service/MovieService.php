@@ -46,7 +46,7 @@ class MovieService
             $timeline[$movie->getId()] = [
                 'viewer' => $movie->getViewer()->getUsername(),
                 'comment' => $this->commentService->getComment($movie->getViewer(), $movie->getTmdbId()),
-                'createdAt' => $movie->getCreatedAt(),
+                'createdAt' => date_format($movie->getCreatedAt(), 'd / m'),
                 'title' => $content['title'],
                 'overview' => $content['overview'],
                 'genres' => $content['genres'],
