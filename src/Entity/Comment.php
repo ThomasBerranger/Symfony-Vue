@@ -50,6 +50,11 @@ class Comment
      */
     private $updatedAt;
 
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private $spoiler;
+
 
     public function __construct()
     {
@@ -119,6 +124,18 @@ class Comment
     public function setUpdatedAt(\DateTimeInterface $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getSpoiler(): ?bool
+    {
+        return $this->spoiler;
+    }
+
+    public function setSpoiler(bool $spoiler): self
+    {
+        $this->spoiler = $spoiler;
 
         return $this;
     }
